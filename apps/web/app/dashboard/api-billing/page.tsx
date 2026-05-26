@@ -34,10 +34,16 @@ export default function ApiBillingDashboardPage() {
           </BreadcrumbList>
         </Breadcrumb>
       }
-      title="API-Abrechnung"
-      description="Standard-Tarif festlegen und API-Nutzung aller Schlüssel nach Zeitraum auswerten."
     >
-      <ApiUsagePanel mode="admin" />
+      <div className="flex min-h-0 flex-col gap-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">API-Abrechnung</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Standard-Tarif festlegen und API-Nutzung aller Schlüssel nach Zeitraum auswerten.
+          </p>
+        </div>
+        <ApiUsagePanel mode="admin" />
+      </div>
     </DashboardPageFrame>
   )
 }

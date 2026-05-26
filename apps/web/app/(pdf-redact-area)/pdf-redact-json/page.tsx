@@ -146,7 +146,7 @@ export default function SimpleTextPage() {
       setProgressStep("")
 
       try {
-        const result = await uploadPdf(file, (stepLabel, prog) => {
+        const result = await uploadPdf(file, "anonymize_text", (stepLabel, prog) => {
           setProgressStep(stepLabel)
           setProgress(prog)
         })

@@ -17,7 +17,14 @@ export async function GET(request: Request) {
   const items = await prisma.siteFeedback.findMany({
     orderBy: { createdAt: "desc" },
     take: limit,
-    include: {
+    select: {
+      id: true,
+      message: true,
+      rating: true,
+      email: true,
+      pagePath: true,
+      userAgent: true,
+      createdAt: true,
       user: { select: { id: true, email: true, name: true } },
     },
   })
