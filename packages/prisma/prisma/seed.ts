@@ -74,16 +74,30 @@ async function upsertCredentialUser(opts: UpsertOpts) {
 
 /**
  * Standard-Nutzer: user@pdffabrik.de (Rolle `user`)
- * Admin: admin@pdffabrik.de (Rolle `admin`)
- * Passwörter: SEED_USER_PASSWORD / SEED_ADMIN_PASSWORD (Default: pdffabrikdev)
+ * Standard-Admins:
+ * - info@schindlertom.com
+ * - max@maxcheck.de
+ * Passwörter: SEED_USER_PASSWORD / SEED_ADMIN_PASSWORD
  */
 async function main() {
   const userEmail = (process.env.SEED_USER_EMAIL ?? "user@pdffabrik.de").toLowerCase()
-  const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "admin@pdffabrik.de").toLowerCase()
   const userPassword = process.env.SEED_USER_PASSWORD ?? defaultPassword
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? defaultPassword
   const userName = process.env.SEED_USER_NAME ?? "User"
-  const adminName = process.env.SEED_ADMIN_NAME ?? "Admin"
+  const adminPassword =
+    process.env.SEED_ADMIN_PASSWORD ?? "EsWirdEndlichZeitFürEinenGemeinsamenTornado2026!"
+
+  const admins = [
+    {
+      email: (process.env.SEED_ADMIN_EMAIL ?? "info@schindlertom.com").toLowerCase(),
+      name: process.env.SEED_ADMIN_NAME ?? "Tom Schindler",
+      label: "Admin 1",
+    },
+    {
+      email: (process.env.SEED_ADMIN_EMAIL_2 ?? "max@maxcheck.de").toLowerCase(),
+      name: process.env.SEED_ADMIN_NAME_2 ?? "Max",
+      label: "Admin 2",
+    },
+  ]
 
   await upsertCredentialUser({
     email: userEmail,
@@ -93,13 +107,15 @@ async function main() {
     label: "User",
   })
 
-  await upsertCredentialUser({
-    email: adminEmail,
-    password: adminPassword,
-    name: adminName,
-    role: UserRole.admin,
-    label: "Admin",
-  })
+  for (const admin of admins) {
+    await upsertCredentialUser({
+      email: admin.email,
+      password: adminPassword,
+      name: admin.name,
+      role: UserRole.admin,
+      label: admin.label,
+    })
+  }
 }
 
 main()

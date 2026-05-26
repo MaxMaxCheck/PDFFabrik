@@ -1,5 +1,6 @@
 services:
   api:
+    container_name: pdffabrik-api
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -22,6 +23,7 @@ services:
       start_period: 40s
 
   worker:
+    container_name: pdffabrik-worker
     build:
       context: .
       dockerfile: apps/api/Dockerfile
