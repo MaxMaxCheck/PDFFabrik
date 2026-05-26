@@ -1,4 +1,5 @@
 import { getSessionCookie } from "better-auth/cookies"
+import { hasSiteUnlock, normalizeSiteLockNext, SITE_LOCK_COOKIE_NAME } from "@/lib/site-lock"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
@@ -21,6 +22,24 @@ export function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  if (pathname === "/locked") {
+    if (hasSiteUnlock(request.cookies.get(SITE_LOCK_COOKIE_NAME)?.value)) {
+      const url = request.nextUrl.clone()
+      url.pathname = normalizeSiteLockNext(request.nextUrl.searchParams.get("next"))
+      url.search = ""
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
+
+  if (!hasSiteUnlock(request.cookies.get(SITE_LOCK_COOKIE_NAME)?.value)) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/locked"
+    url.search = ""
+    url.searchParams.set("next", `${pathname}${request.nextUrl.search}`)
+    return NextResponse.redirect(url)
+  }
+
   if (!needsLogin(pathname)) {
     return NextResponse.next()
   }
@@ -37,11 +56,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/pdf-redact",
-    "/pdf-redact/:path*",
-    "/pdf-redact-json",
-    "/pdf-redact-json/:path*",
-    "/dashboard",
-    "/dashboard/:path*",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.[^/]+$).*)",
   ],
 }
