@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      REDIS_URL: "${REDIS_URL}"
+      JOBS_DIR: /data/jobs
+      RQ_QUEUE_NAME: "${RQ_QUEUE_NAME:-pdf_jobs}"
+      OMP_NUM_THREADS: "8"
+      TOKENIZERS_PARALLELISM: "false"
+    volumes:
+      - api-jobs:/data/jobs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - 'exec rq worker -u "$$REDIS_URL" "$$RQ_QUEUE_NAME"'
+    environment:
+      REDIS_URL: "${REDIS_URL}"
+      RQ_QUEUE_NAME: "${RQ_QUEUE_NAME:-pdf_jobs}"
+      JOBS_DIR: /data/jobs
+      PYTHONPATH: /app
+    volumes:
+      - api-jobs:/data/jobs
+    shm_size: 512mb
+
+volumes:
+  api-jobs: null
