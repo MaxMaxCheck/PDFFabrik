@@ -186,6 +186,7 @@ export default function SimpleTextPage() {
         }
         setChoices(initial)
         setPendingIdleFile(null)
+        recordPdfToolUsage("anonymize_text")
         setStep("review")
         markFirstPdfUpload()
       } catch (err) {
@@ -259,7 +260,6 @@ export default function SimpleTextPage() {
       )
       setLastPdf(pdf)
       setStep("done")
-      recordPdfToolUsage("anonymize_text")
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Anonymisierung fehlgeschlagen"

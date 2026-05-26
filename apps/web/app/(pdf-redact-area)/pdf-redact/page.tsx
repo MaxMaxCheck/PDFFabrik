@@ -263,6 +263,7 @@ export default function Page() {
           if (prev) URL.revokeObjectURL(prev)
           return URL.createObjectURL(file)
         })
+        recordPdfToolUsage("anonymize_full")
         setStep("review")
         void refreshAccess()
         markFirstPdfUpload()
@@ -418,7 +419,6 @@ export default function Page() {
       if (previewPdf && previewSignature === signature) {
         setLastPdf(previewPdf)
         setStep("done")
-        recordPdfToolUsage("anonymize_full")
         return
       }
 
@@ -437,7 +437,6 @@ export default function Page() {
       )
       setLastPdf(pdf)
       setStep("done")
-      recordPdfToolUsage("anonymize_full")
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Anonymisierung fehlgeschlagen"
