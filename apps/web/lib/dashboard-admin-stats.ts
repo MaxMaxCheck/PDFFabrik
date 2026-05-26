@@ -1,5 +1,5 @@
 import { prisma } from "@workspace/prisma"
-import type { PdfToolKind } from "@prisma/client"
+import type { PdfToolKind } from "@/lib/pdf-tool-usage"
 
 export type ToolChartRow = { name: string; value: number; tool: PdfToolKind }
 export type RoleChartRow = { name: string; value: number }

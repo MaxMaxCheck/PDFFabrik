@@ -1,6 +1,6 @@
 import { DashboardPageFrame } from "@/components/dashboard-page-frame"
+import type { PdfToolKind } from "@/lib/pdf-tool-usage"
 import { prisma } from "@workspace/prisma"
-import type { PdfToolKind, UserRole } from "@prisma/client"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,6 +12,8 @@ import {
 import Link from "next/link"
 import { Suspense } from "react"
 import { UsersFilterBar } from "./users-filter-bar"
+
+type UserRole = "admin" | "user"
 
 export const metadata = {
   title: "Nutzer | Admin",

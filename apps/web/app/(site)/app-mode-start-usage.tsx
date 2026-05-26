@@ -1,7 +1,6 @@
 import { getAppSession } from "@/lib/get-session"
-import { PDF_TOOL_LABELS } from "@/lib/pdf-tool-usage"
+import { PDF_TOOL_LABELS, type PdfToolKind } from "@/lib/pdf-tool-usage"
 import { prisma } from "@workspace/prisma"
-import type { PdfToolKind } from "@prisma/client"
 
 const ORDER: PdfToolKind[] = [
   "anonymize_full",

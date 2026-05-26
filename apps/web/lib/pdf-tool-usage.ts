@@ -1,4 +1,9 @@
-import type { PdfToolKind } from "@prisma/client"
+export type PdfToolKind =
+  | "anonymize_full"
+  | "anonymize_text"
+  | "metadata_view"
+  | "metadata_strip"
+  | "api_analyze"
 
 /** Labels für Admin-Tabelle & Startseite (de) */
 export const PDF_TOOL_LABELS: Record<PdfToolKind, string> = {
@@ -20,5 +25,3 @@ const VALID_TOOLS: PdfToolKind[] = [
 export function isPdfToolKind(x: string): x is PdfToolKind {
   return (VALID_TOOLS as string[]).includes(x)
 }
-
-export { type PdfToolKind }
