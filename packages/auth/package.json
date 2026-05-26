@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/auth.ts"
+  },
+  "scripts": {
+    "build": "echo done",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@workspace/prisma": "workspace:*",
+    "better-auth": "^1.4.22"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "^5.9.3"
+  }
+}

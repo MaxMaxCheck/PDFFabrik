@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-1.1.x", "linux-arm64-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// App-Rollen: `user` ist Standard, `admin` z. B. fürs Dashboard
+enum UserRole {
+  user
+  admin
+}
+
+/// Tarif für Funktionszugriff und Limits
+enum UserPlan {
+  free
+  pro
+}
+
+/// Vertrags-/Abrechnungsart, nicht für Feature-Gating
+enum UserKind {
+  default
+  partner
+}
+
+/// PDF-Werkzeuge (für Nutzungszähler pro Nutzer)
+enum PdfToolKind {
+  anonymize_full
+  anonymize_text
+  metadata_view
+  metadata_strip
+  /// Programm-API (Integration): POST …/integrations/pdf-detect
+  api_analyze
+}
+
+model User {
+  id            String             @id
+  name          String
+  email         String
+  emailVerified Boolean            @default(false)
+  image         String?
+  role          UserRole           @default(user)
+  plan          UserPlan           @default(free)
+  kind          UserKind           @default(default)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  pdfToolStats  UserPdfToolStat[]
+  dailyUsages   UserDailyUsage[]
+  apiKeys       ApiKey[]
+  feedback      SiteFeedback[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+/// Nutzer-Feedback aus dem Zusatzpanel (optional mit E-Mail, ggf. verknüpft mit User)
+model SiteFeedback {
+  id        String   @id @default(cuid())
+  message   String
+  /// 1–5 Stimmung (Emoji-Leiste im Dialog)
+  rating    Int?
+  email     String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  pagePath  String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("site_feedback")
+}
+
+/// Server-zu-Server / Integration: Bearer-Token + Policy (Kategorien/Modus)
+model ApiKey {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String?
+  tokenHash          String
+  /// Leer = alle Kategorien beim Aufruf
+  defaultCategories  String[]           @default([])
+  defaultMode        String             @default("replace")
+  createdAt          DateTime           @default(now())
+  lastUsedAt         DateTime?
+  usageEvents        ApiKeyUsageEvent[]
+
+  @@index([userId])
+  @@map("api_key")
+}
+
+/// Ein erfolgreicher Integrations-Aufruf (Abrechnung / Auswertung)
+model ApiKeyUsageEvent {
+  id        String   @id @default(cuid())
+  apiKeyId  String
+  apiKey    ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  userId    String
+  endpoint  String
+  createdAt DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+  @@index([userId, createdAt])
+  @@map("api_key_usage_event")
+}
+
+/// Standard-Tarif für API-Aufrufe (Admin)
+model IntegrationPricing {
+  id                 String   @id @default("default")
+  /// Preis pro erfolgreichem API-Call in Cent (z. B. 15 = 0,15 €)
+  pricePerCallCents  Int      @default(0)
+  currency           String   @default("EUR")
+  updatedAt          DateTime @updatedAt
+
+  @@map("integration_pricing")
+}
+
+/// Aggregierte Vollzähler: ein Datensatz pro (Nutzer, Werkzeug)
+model UserPdfToolStat {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool      PdfToolKind
+  count     Int         @default(0)
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, tool])
+  @@index([userId])
+  @@map("user_pdf_tool_stat")
+}
+
+/// Tagesnutzung für Free-Plan-Gates pro Werkzeug
+model UserDailyUsage {
+  id     String      @id @default(cuid())
+  userId String
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool   PdfToolKind
+  date   DateTime    @db.Date
+  count  Int         @default(0)
+
+  @@unique([userId, tool, date])
+  @@index([userId])
+  @@map("user_daily_usage")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}

@@ -1,0 +1,74 @@
+# apps/web (Next.js) läuft auf dem Host mit Hot Reload: `bun run dev:web` — nicht als Container.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-pdf_anonym}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pdf-anonym-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      JOBS_DIR: /data/jobs
+      OMP_NUM_THREADS: "8"
+      TOKENIZERS_PARALLELISM: "false"
+    volumes:
+      - api-jobs:/data/jobs
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    # Ein RQ-Prozess pro Container (kein multiprocessing.spawn) — viel stabiler unter Docker
+    # (run_workers.py + WORKER_COUNT=3 lädt SpaCy mehrfach → RAM/OOM, „ewiges“ Polling).
+    # Mehr Durchsatz: docker compose up -d --scale worker=2
+    # $$ damit Compose-Host-Env ($REDIS_URL) nicht substituiert — Variablen gelten im Container
+    command:
+      [
+        "sh",
+        "-c",
+        'exec rq worker -u "$$REDIS_URL" "$$RQ_QUEUE_NAME"',
+      ]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      RQ_QUEUE_NAME: pdf_jobs
+      JOBS_DIR: /data/jobs
+      PYTHONPATH: /app
+    volumes:
+      - api-jobs:/data/jobs
+    shm_size: "512mb"
+    depends_on:
+      - redis
+
+volumes:
+  pdf-anonym-pgdata:
+  redis-data:
+  api-jobs:
