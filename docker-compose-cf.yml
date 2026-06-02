@@ -5,8 +5,9 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
-    ports:
-      - "3001:3001"
+    # Coolify/Prod: kein Host-Port — API nur im Docker-Netz (Web: PDF_TOOL_API_URL=http://api:3001).
+    expose:
+      - "3001"
     environment:
       REDIS_URL: "${REDIS_URL}"
       JOBS_DIR: /data/jobs
