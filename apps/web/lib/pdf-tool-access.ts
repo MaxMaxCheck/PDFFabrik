@@ -6,11 +6,16 @@ import {
   type UserPlan,
 } from "@workspace/prisma"
 import { headers } from "next/headers"
+import { isProOnlyPdfTool } from "@/lib/pdf-tool-usage"
 
 const ACCESS_TIME_ZONE = "Europe/Berlin"
 const FREE_DAILY_LIMIT = 1
 
-type AccessReason = "login_required" | "daily_limit_reached" | null
+export type AccessReason =
+  | "login_required"
+  | "daily_limit_reached"
+  | "pro_required"
+  | null
 
 export type PdfToolAccessState = {
   authenticated: boolean
@@ -49,6 +54,19 @@ function buildUnlimitedAccessState(plan: UserPlan): PdfToolAccessState {
   }
 }
 
+function buildProRequiredAccessState(plan: UserPlan = "free"): PdfToolAccessState {
+  return {
+    authenticated: true,
+    canUse: false,
+    reason: "pro_required",
+    plan,
+    dailyLimit: null,
+    dailyCount: 0,
+    remainingToday: null,
+    isUnlimited: false,
+  }
+}
+
 function buildFreeAccessState(count: number): PdfToolAccessState {
   const remainingToday = Math.max(0, FREE_DAILY_LIMIT - count)
   return {
@@ -61,6 +79,13 @@ function buildFreeAccessState(count: number): PdfToolAccessState {
     remainingToday,
     isUnlimited: false,
   }
+}
+
+function hasUnlimitedPdfToolAccess(user: {
+  role: string
+  plan: UserPlan
+}): boolean {
+  return user.role === "admin" || user.plan === "pro"
 }
 
 function getBerlinDay() {
@@ -111,8 +136,12 @@ export async function getPdfToolAccessForUser(
     return buildGuestAccessState()
   }
 
-  if (user.role === "admin" || user.plan === "pro") {
-    return buildUnlimitedAccessState("pro")
+  if (hasUnlimitedPdfToolAccess(user)) {
+    return buildUnlimitedAccessState(user.plan)
+  }
+
+  if (isProOnlyPdfTool(tool)) {
+    return buildProRequiredAccessState(user.plan)
   }
 
   const day = getBerlinDay()
@@ -147,8 +176,12 @@ export async function consumePdfToolDailyAccess(
             return buildGuestAccessState()
           }
 
-          if (user.role === "admin" || user.plan === "pro") {
-            return buildUnlimitedAccessState("pro")
+          if (hasUnlimitedPdfToolAccess(user)) {
+            return buildUnlimitedAccessState(user.plan)
+          }
+
+          if (isProOnlyPdfTool(tool)) {
+            return buildProRequiredAccessState(user.plan)
           }
 
           const day = getBerlinDay()
@@ -213,6 +246,9 @@ export async function consumePdfToolDailyAccess(
 export function getPdfToolAccessMessage(access: PdfToolAccessState): string | null {
   if (access.reason === "login_required") {
     return "Bitte melde dich an oder registriere dich, um dieses PDF-Tool zu nutzen."
+  }
+  if (access.reason === "pro_required") {
+    return "PDF Schwärzen ist nur im Pro-Plan verfügbar. Bitte wende dich an uns oder nutze einen Pro-Account."
   }
   if (access.reason === "daily_limit_reached") {
     return "Im Free-Plan kannst du dieses Tool einmal pro Tag nutzen."

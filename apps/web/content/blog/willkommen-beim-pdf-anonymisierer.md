@@ -2,6 +2,10 @@
 title: "Willkommen bei PDFFabrik.de"
 date: "2025-12-10"
 description: "Kurze Einführung, was PDFFabrik.de leistet und wofür es gedacht ist."
+category: "News"
+author:
+  name: "PDFFabrik Team"
+  role: "PDFFabrik.de"
 ---
 
 Dieser Blog ergänzt die **Dokumentation** und die **Weboberfläche** mit kurzen Artikeln zu Themen wie Datenschutz, typische Anwendungsfälle und Best Practices.

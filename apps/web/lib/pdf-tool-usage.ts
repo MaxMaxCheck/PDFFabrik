@@ -25,3 +25,13 @@ const VALID_TOOLS: PdfToolKind[] = [
 export function isPdfToolKind(x: string): x is PdfToolKind {
   return (VALID_TOOLS as string[]).includes(x)
 }
+
+/** Nur mit Pro (oder Admin); kein Free-Tageslimit mehr. */
+export const PRO_ONLY_PDF_TOOLS: PdfToolKind[] = [
+  "anonymize_full",
+  "anonymize_text",
+]
+
+export function isProOnlyPdfTool(tool: PdfToolKind): boolean {
+  return PRO_ONLY_PDF_TOOLS.includes(tool)
+}

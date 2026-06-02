@@ -12,6 +12,7 @@ import {
 } from "@workspace/ui/components/breadcrumb"
 import { PDF_TOOL_LABELS, type PdfToolKind } from "@/lib/pdf-tool-usage"
 import { Button } from "@workspace/ui/components/button"
+import { UserPlanEditor } from "./user-plan-editor"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -89,8 +90,30 @@ export default async function AdminUserDetailPage({
           </Button>
         </div>
 
+        <UserPlanEditor
+          userId={user.id}
+          initialPlan={user.plan}
+          initialKind={user.kind}
+        />
+
         {/* Info cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <InfoCard label="Plan">
+            <span
+              className={
+                user.plan === "pro"
+                  ? "rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary"
+                  : "rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+              }
+            >
+              {user.plan}
+            </span>
+          </InfoCard>
+          <InfoCard label="Art">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              {user.kind}
+            </span>
+          </InfoCard>
           <InfoCard label="Rolle">
             <span
               className={

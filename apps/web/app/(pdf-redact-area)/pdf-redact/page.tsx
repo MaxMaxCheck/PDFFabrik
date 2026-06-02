@@ -516,10 +516,12 @@ export default function Page() {
         : "Wähle oben mindestens einen Filter. Ohne Filter startet die Analyse nicht."
 
   const accessHint =
-    access?.authenticated && !access.isUnlimited
-      ? access.reason === "daily_limit_reached"
-        ? "Free-Plan: heute bereits genutzt."
-        : "Free-Plan: 1 PDF-Session pro Tag."
+    access?.authenticated && !access.canUse
+      ? access.reason === "pro_required"
+        ? "Nur Pro: PDF Schwärzen ist in deinem Tarif nicht enthalten."
+        : access.reason === "daily_limit_reached"
+          ? "Free-Plan: heute bereits genutzt."
+          : null
       : null
 
   const showFullWorkspace =

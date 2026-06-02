@@ -1,6 +1,11 @@
 import { BlogContent } from "@/components/blog-content"
-import { getAllSlugs, getPostBySlug } from "@/lib/blog"
-import Link from "next/link"
+import { BlogInlineToc } from "@/components/blog/blog-inline-toc"
+import { BlogPostFooter } from "@/components/blog/blog-post-footer"
+import { BlogPostHeader } from "@/components/blog/blog-post-header"
+import { BlogPostHero } from "@/components/blog/blog-post-hero"
+import { BlogRelatedPosts } from "@/components/blog/blog-related-posts"
+import { extractMarkdownHeadings } from "@/lib/blog-headings"
+import { getAllPosts, getAllSlugs, getPostBySlug } from "@/lib/blog"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 
@@ -25,35 +30,26 @@ export default async function BlogPostPage({ params }: Props) {
   const post = getPostBySlug(slug)
   if (!post) notFound()
 
-  const displayDate =
-    post.date &&
-    new Date(post.date + "T12:00:00").toLocaleDateString("de-DE", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  const headings = extractMarkdownHeadings(post.content)
+  const allPosts = getAllPosts()
 
   return (
     <div className="flex min-h-0 flex-col bg-sidebar text-sidebar-foreground">
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 sm:py-10 md:px-8">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/blog" className="font-medium text-primary hover:underline">
-            ← Alle Beiträge
-          </Link>
-        </p>
-        {displayDate && (
-          <time dateTime={post.date} className="mt-4 block text-sm text-muted-foreground">
-            {displayDate}
-          </time>
-        )}
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">{post.title}</h1>
-        {post.description && (
-          <p className="mt-2 text-lg text-muted-foreground">{post.description}</p>
-        )}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 md:px-8">
+        <article className="flex flex-col gap-10 py-10 lg:gap-16 lg:pt-14 lg:pb-8">
+          <div className="flex flex-col gap-9 lg:gap-16">
+            <BlogPostHeader post={post} />
+            <BlogPostHero slug={post.slug} title={post.title} image={post.image} />
+          </div>
 
-        <article className="mt-8">
-          <BlogContent markdown={post.content} />
+          <div className="mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-9 lg:gap-16">
+            <BlogInlineToc headings={headings} />
+            <BlogContent markdown={post.content} />
+            <BlogPostFooter post={post} />
+          </div>
         </article>
+
+        <BlogRelatedPosts posts={allPosts} currentSlug={slug} />
       </main>
     </div>
   )

@@ -8,7 +8,13 @@ import { usePathname, useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { useGuestAuthNavActive, useLoginDialog } from "@/components/login-dialog"
 import { isSameSiteNavDestination } from "@/lib/site-nav-path"
-import { SITE_MAIN_NAV, SITE_TOOL_NAV } from "@/lib/site-nav-items"
+import {
+  SITE_BLOG_NAV,
+  SITE_HOME_NAV,
+  SITE_IMAGE_TOOL_NAV,
+  SITE_PDF_TOOL_NAV,
+  type SiteNavItem,
+} from "@/lib/site-nav-items"
 import { Button } from "@workspace/ui/components/button"
 import {
   Sheet,
@@ -24,7 +30,7 @@ function SheetNavLink({
   pathname,
   onNavigate,
 }: {
-  item: (typeof SITE_MAIN_NAV)[number]
+  item: SiteNavItem
   pathname: string
   onNavigate: () => void
 }) {
@@ -122,7 +128,7 @@ export function SiteMobileNav() {
             <p className="px-4 pb-1 text-[10px] font-semibold tracking-wide text-white/45 uppercase">
               App
             </p>
-            {SITE_MAIN_NAV.map((item) => (
+            {SITE_HOME_NAV.map((item) => (
               <SheetNavLink
                 key={item.href}
                 item={item}
@@ -134,9 +140,32 @@ export function SiteMobileNav() {
             <div className="mx-3 my-2 h-px bg-white/15" role="separator" />
 
             <p className="px-4 pb-1 text-[10px] font-semibold tracking-wide text-white/45 uppercase">
-              PDF-Tools
+              PDF
             </p>
-            {SITE_TOOL_NAV.map((item) => (
+            {SITE_PDF_TOOL_NAV.map((item) => (
+              <SheetNavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                onNavigate={close}
+              />
+            ))}
+
+            <p className="px-4 pt-2 pb-1 text-[10px] font-semibold tracking-wide text-white/45 uppercase">
+              Bilder
+            </p>
+            {SITE_IMAGE_TOOL_NAV.map((item) => (
+              <SheetNavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                onNavigate={close}
+              />
+            ))}
+
+            <div className="mx-3 my-2 h-px bg-white/15" role="separator" />
+
+            {SITE_BLOG_NAV.map((item) => (
               <SheetNavLink
                 key={item.href}
                 item={item}

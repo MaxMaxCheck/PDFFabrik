@@ -42,20 +42,6 @@ for (const name of [".env", ".env.local"]) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    const base = (
-      process.env.PDF_TOOL_API_URL ??
-      process.env.NEXT_PUBLIC_API_URL ??
-      "http://127.0.0.1:3001"
-    )
-      .replace(/\/$/, "")
-    return [
-      {
-        source: "/api/pdf-proxy/v1/:path*",
-        destination: `${base}/v1/:path*`,
-      },
-    ]
-  },
   async redirects() {
     return [
       {
@@ -80,6 +66,7 @@ const nextConfig = {
     "@workspace/auth",
     "@workspace/prisma",
     "pdfjs-dist",
+    "pdf-lib",
   ],
   output: "standalone",
   // Monorepo: Workspace-Pakete korrekt ins Standalone-Bundle einbeziehen

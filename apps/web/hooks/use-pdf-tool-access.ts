@@ -8,7 +8,7 @@ import type { PdfToolKind } from "@/lib/pdf-tool-usage"
 type PdfToolAccessResponse = {
   authenticated: boolean
   canUse: boolean
-  reason: "login_required" | "daily_limit_reached" | null
+  reason: "login_required" | "daily_limit_reached" | "pro_required" | null
   plan: "free" | "pro" | null
   dailyLimit: number | null
   dailyCount: number
@@ -37,8 +37,14 @@ function loginRequiredState(): PdfToolAccessResponse {
 function accessMessage(access: PdfToolAccessResponse | null): string | null {
   if (!access) return "Zugriff wird geprueft ..."
   if (access.reason === "login_required") return null
+  if (access.reason === "pro_required") {
+    return "PDF Schwärzen ist nur im Pro-Plan verfügbar."
+  }
   if (access.reason === "daily_limit_reached") {
     return "Im Free-Plan kannst du dieses Tool einmal pro Tag nutzen."
+  }
+  if (!access.canUse) {
+    return "Du hast keinen Zugriff auf dieses Tool."
   }
   return null
 }

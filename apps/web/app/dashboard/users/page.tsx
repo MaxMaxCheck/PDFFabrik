@@ -154,6 +154,7 @@ export default async function AdminUsersPage({
                   <th className="px-3 py-3">Name</th>
                   <th className="px-3 py-3">E-Mail</th>
                   <th className="px-3 py-3">Rolle</th>
+                  <th className="px-3 py-3">Plan</th>
                   <th className="px-3 py-3">Verifiziert</th>
                   {TOOL_ORDER.map((t) => (
                     <th key={t} className="px-2 py-3 text-center normal-case">
@@ -169,7 +170,7 @@ export default async function AdminUsersPage({
                 {users.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9 + TOOL_ORDER.length}
+                      colSpan={10 + TOOL_ORDER.length}
                       className="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
                       Keine Nutzer gefunden.
@@ -205,6 +206,17 @@ export default async function AdminUsersPage({
                             }
                           >
                             {u.role}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span
+                            className={
+                              u.plan === "pro"
+                                ? "rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary"
+                                : "rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                            }
+                          >
+                            {u.plan}
                           </span>
                         </td>
                         <td className="px-3 py-3">

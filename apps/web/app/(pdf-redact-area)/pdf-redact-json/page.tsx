@@ -25,6 +25,7 @@ import { useSiteChromeTopLoading } from "@/components/site-chrome-top-loading"
 import { useSmoothedUploadProgress } from "@/hooks/use-smoothed-upload-progress"
 import { markFirstPdfUpload } from "@/lib/site-prefs"
 import { recordPdfToolUsage } from "@/lib/record-pdf-tool-usage"
+import { usePdfToolAccess } from "@/hooks/use-pdf-tool-access"
 import {
   cleanExtractedTextArtifacts,
   previewAnonymizedPlainText,
@@ -92,6 +93,7 @@ export default function SimpleTextPage() {
   const idleLayoutRef = useRef<HTMLDivElement>(null)
   const [uploadRunId, setUploadRunId] = useState(0)
   const [anonRunId, setAnonRunId] = useState(0)
+  const { ensureCanStart } = usePdfToolAccess("anonymize_text")
 
   const idleFilterCountSuffix =
     activeCategories.size < ALL_CATEGORIES.length
@@ -200,6 +202,11 @@ export default function SimpleTextPage() {
 
   const tryBeginUpload = useCallback(
     (file: File) => {
+      const gate = ensureCanStart()
+      if (!gate.ok) {
+        if (gate.message) setError(gate.message)
+        return
+      }
       if (activeCategories.size === 0) {
         setPendingIdleFile(file)
         setError("Bitte mindestens einen Filter aktivieren.")
@@ -210,8 +217,16 @@ export default function SimpleTextPage() {
       setError(null)
       void handleFile(file)
     },
-    [activeCategories, playFilterGateShake, handleFile]
+    [activeCategories, ensureCanStart, playFilterGateShake, handleFile]
   )
+
+  const handleBeforeSelect = useCallback(() => {
+    const gate = ensureCanStart()
+    if (!gate.ok && gate.message) {
+      setError(gate.message)
+    }
+    return gate.ok
+  }, [ensureCanStart])
 
   const continuePendingUpload = useCallback(() => {
     if (pendingIdleFile && activeCategories.size > 0) {
@@ -691,6 +706,7 @@ export default function SimpleTextPage() {
                     : undefined
                 }
                 heroHint={idleHeroHint}
+                onBeforeSelect={handleBeforeSelect}
                 onFile={(f) => {
                   tryBeginUpload(f)
                 }}

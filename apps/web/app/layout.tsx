@@ -6,6 +6,7 @@ import { CookieConsentBanner } from "@/components/cookie-consent-banner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { buildRootMetadata } from "@/lib/site-metadata"
 import { cn } from "@workspace/ui/lib/utils"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -44,6 +45,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           {children}
+          <Toaster richColors />
           <CookieConsentBanner />
         </ThemeProvider>
       </body>

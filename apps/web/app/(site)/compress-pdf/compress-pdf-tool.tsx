@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { PdfDropzone } from "@/components/pdf-dropzone"
+import { downloadBlob } from "@/lib/api-client"
 import {
-  compressPdf,
-  downloadBlob,
-  type CompressResult,
-} from "@/lib/api-client"
+  compressPdfInBrowser,
+  type CompressPdfResult,
+} from "@/lib/pdf-compress-client"
 import { markFirstPdfUpload } from "@/lib/site-prefs"
 import { useSiteChromeTopLoading } from "@/components/site-chrome-top-loading"
 import { Button } from "@workspace/ui/components/button"
@@ -28,7 +28,7 @@ const QUALITY_MAX = 95
 const QUALITY_DEFAULT = 72
 
 const PRESETS = [
-  { label: "Max.", value: 45, hint: "Stärkste Komprimierung" },
+  { label: "Max.", value: 20, hint: "Stärkste Komprimierung (Fotos bleiben)" },
   { label: "Mittel", value: 72, hint: "Ausgewogen" },
   { label: "Hoch", value: 88, hint: "Beste Qualität" },
 ] as const
@@ -54,7 +54,8 @@ export function CompressPdfTool() {
   const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [quality, setQuality] = useState(QUALITY_DEFAULT)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<CompressResult | null>(null)
+  const [result, setResult] = useState<CompressPdfResult | null>(null)
+  const [progressStep, setProgressStep] = useState("")
   const [idleFileDragOver, setIdleFileDragOver] = useState(false)
   const [layoutEnter, setLayoutEnter] = useState(false)
 
@@ -99,8 +100,11 @@ export function CompressPdfTool() {
     if (!file) return
     setStep("compressing")
     setError(null)
+    setProgressStep("Start …")
     try {
-      const r = await compressPdf(file, quality)
+      const r = await compressPdfInBrowser(file, quality, (step, _pct) => {
+        setProgressStep(step)
+      })
       downloadBlob(r.blob, outFilename(file.name))
       setResult(r)
       setStep("done")
@@ -157,6 +161,10 @@ export function CompressPdfTool() {
                 <span className="ml-1.5 font-semibold text-green-600 dark:text-green-400">
                   −{savings} %
                 </span>
+              </p>
+            ) : result?.keptOriginal ? (
+              <p className="mt-2 text-muted-foreground">
+                Keine Verkleinerung möglich — Original wurde übernommen.
               </p>
             ) : (
               <p className="mt-2 text-muted-foreground">
@@ -255,9 +263,16 @@ export function CompressPdfTool() {
                     disabled={step === "compressing"}
                   >
                     {step === "compressing" ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <LoadingSpinner />
-                        Komprimiere …
+                      <span className="flex flex-col items-center justify-center gap-1">
+                        <span className="flex items-center gap-2">
+                          <LoadingSpinner />
+                          Komprimiere …
+                        </span>
+                        {progressStep ? (
+                          <span className="text-[11px] font-normal opacity-90">
+                            {progressStep}
+                          </span>
+                        ) : null}
                       </span>
                     ) : (
                       "PDF komprimieren"
@@ -273,7 +288,8 @@ export function CompressPdfTool() {
                         Qualität
                       </h2>
                       <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                        Niedrigere Qualität → stärkere Komprimierung der Bilder
+                        Stärker = kleinere Datei. Fotos werden nie entfernt — unsichere
+                        Schritte werden übersprungen.
                       </p>
                     </div>
 
@@ -405,7 +421,7 @@ export function CompressPdfTool() {
               className="flex h-full min-h-0 flex-col"
               fileLabel=""
               heroCtaMode="select"
-              heroHint="PDF auswählen — danach Qualität einstellen und komprimieren."
+              heroHint="Läuft lokal im Browser — die PDF verlässt dein Gerät nicht. Fotos bleiben erhalten."
               onFile={onFile}
             />
           </div>

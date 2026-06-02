@@ -16,9 +16,19 @@ export type SiteNavItem = {
   match: (p: string) => boolean
 }
 
-/** Schmale Leiste: Start + Kern-PDF-Werkzeuge */
-export const SITE_MAIN_NAV: SiteNavItem[] = [
+export type SiteNavGroup = {
+  id: string
+  label: string
+  icon: ComponentProps<typeof HugeiconsIcon>["icon"]
+  items: SiteNavItem[]
+  match: (p: string) => boolean
+}
+
+export const SITE_HOME_NAV: SiteNavItem[] = [
   { href: "/", label: "Start", icon: Home01Icon, match: (p) => p === "/" },
+]
+
+export const SITE_PDF_TOOL_NAV: SiteNavItem[] = [
   {
     href: "/pdf-redact",
     label: "PDF Schwärzen",
@@ -33,13 +43,9 @@ export const SITE_MAIN_NAV: SiteNavItem[] = [
     icon: Settings02Icon,
     match: (p) => p.startsWith("/pdf-redact-json"),
   },
-]
-
-/** Nach dem Separator: Metadaten löschen + Komprimieren */
-export const SITE_TOOL_NAV: SiteNavItem[] = [
   {
     href: "/meta-daten-loeschen",
-    label: "Metadaten löschen",
+    label: "PDF Metadaten löschen",
     icon: RemoveSquareIcon,
     match: (p) => p.startsWith("/meta-daten-loeschen"),
   },
@@ -49,6 +55,18 @@ export const SITE_TOOL_NAV: SiteNavItem[] = [
     icon: FileZipIcon,
     match: (p) => p.startsWith("/compress-pdf"),
   },
+]
+
+export const SITE_IMAGE_TOOL_NAV: SiteNavItem[] = [
+  {
+    href: "/bilder-komprimieren",
+    label: "Bilder komprimieren",
+    icon: FileZipIcon,
+    match: (p) => p.startsWith("/bilder-komprimieren"),
+  },
+]
+
+export const SITE_BLOG_NAV: SiteNavItem[] = [
   {
     href: "/blog",
     label: "Blog",
@@ -56,3 +74,19 @@ export const SITE_TOOL_NAV: SiteNavItem[] = [
     match: (p) => p.startsWith("/blog"),
   },
 ]
+
+export const SITE_PDF_NAV_GROUP: SiteNavGroup = {
+  id: "pdf",
+  label: "PDF",
+  icon: LayoutTwoRowIcon,
+  items: SITE_PDF_TOOL_NAV,
+  match: (p) => SITE_PDF_TOOL_NAV.some((item) => item.match(p)),
+}
+
+export const SITE_IMAGE_NAV_GROUP: SiteNavGroup = {
+  id: "bilder",
+  label: "Bilder",
+  icon: FileZipIcon,
+  items: SITE_IMAGE_TOOL_NAV,
+  match: (p) => SITE_IMAGE_TOOL_NAV.some((item) => item.match(p)),
+}

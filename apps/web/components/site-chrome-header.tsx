@@ -10,6 +10,10 @@ import { SiteMobileNav } from "@/components/site-mobile-nav"
 import { useAppWorkspaceActions } from "@/components/app-workspace-actions"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
+import {
+  SITE_CHROME_TOP_BAR_CLASS,
+  SITE_CHROME_TOP_BAR_SURFACE,
+} from "@/lib/site-chrome-layout"
 import { cn } from "@workspace/ui/lib/utils"
 
 function pageTitleForPath(pathname: string): string {
@@ -66,7 +70,9 @@ export function SiteChromeHeader({ className }: { className?: string }) {
   return (
     <header
       className={cn(
-        "relative z-10 grid h-12 min-h-12 w-full min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-sidebar-border bg-sidebar px-2 text-sidebar-foreground sm:px-2.5 md:px-3 lg:px-4",
+        "relative z-10 grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-2 text-sidebar-foreground sm:px-2.5 md:px-3 lg:px-4",
+        SITE_CHROME_TOP_BAR_CLASS,
+        SITE_CHROME_TOP_BAR_SURFACE,
         className
       )}
     >

@@ -2,6 +2,11 @@
 title: "Sicherheitsaspekte bei der PDF-Anonymisierung"
 date: "2025-12-20"
 description: "Praktische Hinweise: Prüfung der Ergebnisse, Vorsicht bei gescannten PDFs und Rollenrechte im Team."
+category: "Ratgeber"
+featured: true
+author:
+  name: "PDFFabrik Team"
+  role: "PDFFabrik.de"
 ---
 
 Automatisierte Anonymisierung spart Zeit, ersetzt aber kein bewusstes **Risikomanagement**. Hier einige sinnvolle Leitplanken.

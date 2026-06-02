@@ -38,20 +38,21 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
             <div
               className={cn(
                 "flex h-svh max-h-svh w-full min-w-0 flex-col overflow-x-clip bg-app-canvas",
-                "max-lg:pl-0 lg:pl-[calc(0.5rem+4.75rem+0.5rem)]",
+                "max-lg:pl-0 lg:pl-19",
               )}
             >
               <div
                 className={cn(
-                  "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-sm",
-                  "max-lg:my-0 max-lg:mr-0 max-lg:rounded-none lg:my-2 lg:mr-2 lg:rounded-xl",
+                  "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-sidebar text-sidebar-foreground",
                   "transition-transform duration-250 ease-out will-change-transform",
                   leftExtraOpen && "lg:translate-x-[21rem]",
                 )}
               >
-                <SiteChromeHeader />
-                <SiteChromeTopLoadingBar />
-                <div className="min-h-0 w-full min-w-0 flex-1 overflow-x-clip overflow-y-auto [scrollbar-gutter:stable]">
+                <SiteChromeHeader className="absolute inset-x-0 top-0 z-20" />
+                <div className="pointer-events-none absolute inset-x-0 top-12 z-20">
+                  <SiteChromeTopLoadingBar />
+                </div>
+                <div className="min-h-0 w-full min-w-0 flex-1 overflow-x-clip overflow-y-auto pt-12 [scrollbar-gutter:stable]">
                   {children}
                 </div>
               </div>
@@ -90,7 +91,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               strokeWidth={1.8}
             />
           </button>
-          <div className="pointer-events-none fixed top-4 left-2 z-[60] flex h-10 w-[21rem] items-center justify-center px-10">
+          <div className="pointer-events-none fixed top-4 left-0 z-[60] flex h-10 w-[21rem] items-center justify-center px-10">
             <span className="text-center text-[1.05rem] leading-tight font-medium tracking-tight text-foreground">
               {subpanelInAppearance ? "Darstellung" : "PDFFabrik.de"}
             </span>
