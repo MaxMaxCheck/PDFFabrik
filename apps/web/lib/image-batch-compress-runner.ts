@@ -1,7 +1,7 @@
 /** Bilder pro Stapel — danach kurz dem Hauptthread Luft geben. */
 export const IMAGE_BATCH_CHUNK_SIZE = 25
 
-/** Gleichzeitige Encodes innerhalb eines Stapels (WASM ist CPU-lastig). */
+/** Gleichzeitige Encodes innerhalb eines Stapels. */
 export const IMAGE_BATCH_CONCURRENCY = 3
 
 export function yieldToMain(): Promise<void> {
@@ -16,7 +16,8 @@ export function yieldToMain(): Promise<void> {
 export async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
+  onItemDone?: (index: number, result: R) => void
 ): Promise<R[]> {
   if (items.length === 0) return []
   const workers = Math.min(Math.max(1, concurrency), items.length)
@@ -28,7 +29,9 @@ export async function mapWithConcurrency<T, R>(
       const i = nextIndex
       nextIndex += 1
       if (i >= items.length) return
-      results[i] = await fn(items[i]!, i)
+      const result = await fn(items[i]!, i)
+      results[i] = result
+      onItemDone?.(i, result)
     }
   }
 

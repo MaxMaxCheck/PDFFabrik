@@ -348,7 +348,25 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           return encodeLossyWasm(pixels, fmt, quality)
         }
 
-        blob = await encodeAtDims(0, 0)
+        if (!allowKeepOriginal) {
+          try {
+            const { width: nw, height: nh } = await loadImageNaturalSize(src)
+            const longEdge = Math.max(nw, nh)
+            if (longEdge > MAX_ENCODE_LONG_EDGE_PX) {
+              const scale = MAX_ENCODE_LONG_EDGE_PX / longEdge
+              const tw = Math.max(1, Math.round(nw * scale))
+              const th = Math.max(1, Math.round(nh * scale))
+              blob = await encodeAtDims(tw, th)
+              usedDownscale = true
+            } else {
+              blob = await encodeAtDims(0, 0)
+            }
+          } catch {
+            blob = await encodeAtDims(0, 0)
+          }
+        } else {
+          blob = await encodeAtDims(0, 0)
+        }
 
         if (allowKeepOriginal && blob.size >= originalFile.size) {
           try {
@@ -373,7 +391,25 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           }
         }
       } else {
-        blob = await fromURL(src, quality, 0, 0, outFormat)
+        if (!allowKeepOriginal) {
+          try {
+            const { width: nw, height: nh } = await loadImageNaturalSize(src)
+            const longEdge = Math.max(nw, nh)
+            if (longEdge > MAX_ENCODE_LONG_EDGE_PX) {
+              const scale = MAX_ENCODE_LONG_EDGE_PX / longEdge
+              const tw = Math.max(1, Math.round(nw * scale))
+              const th = Math.max(1, Math.round(nh * scale))
+              blob = await fromURL(src, quality, tw, th, outFormat)
+              usedDownscale = true
+            } else {
+              blob = await fromURL(src, quality, 0, 0, outFormat)
+            }
+          } catch {
+            blob = await fromURL(src, quality, 0, 0, outFormat)
+          }
+        } else {
+          blob = await fromURL(src, quality, 0, 0, outFormat)
+        }
 
         if (allowKeepOriginal && blob.size >= originalFile.size) {
           try {
@@ -426,7 +462,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
         total,
         succeeded: 0,
         failed: 0,
-        chunkCurrent: 0,
+        chunkCurrent: 1,
         chunkTotal: totalChunks,
       })
 
@@ -465,7 +501,9 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
             chunkStart + IMAGE_BATCH_CHUNK_SIZE
           )
 
-          const chunkResults = await mapWithConcurrency(
+          syncBatchProgress(added, failures.length, processed, chunkIndex)
+
+          await mapWithConcurrency(
             chunkFiles,
             IMAGE_BATCH_CONCURRENCY,
             async (f, j) => {
@@ -545,23 +583,21 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
               } finally {
                 URL.revokeObjectURL(objectUrl)
               }
+            },
+            (_index, result) => {
+              processed += 1
+              if (!result.ok) {
+                failures.push(result.failure)
+              } else {
+                totalInBytes += result.inBytes
+                totalOutBytes += result.outBytes
+                const outName = uniqueZipEntryName(result.base, result.ext, usedNames)
+                entries[outName] = result.buf
+                added += 1
+              }
+              syncBatchProgress(added, failures.length, processed, chunkIndex)
             }
           )
-
-          for (const result of chunkResults) {
-            processed += 1
-            if (!result.ok) {
-              failures.push(result.failure)
-              continue
-            }
-            totalInBytes += result.inBytes
-            totalOutBytes += result.outBytes
-            const outName = uniqueZipEntryName(result.base, result.ext, usedNames)
-            entries[outName] = result.buf
-            added += 1
-          }
-
-          syncBatchProgress(added, failures.length, processed, chunkIndex)
           await yieldToMain()
         }
 
@@ -578,7 +614,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
 
         let zipped: Uint8Array
         try {
-          zipped = zipSync(entries, { level: 3 })
+          zipped = zipSync(entries, { level: 0 })
         } catch {
           toast.error("ZIP-Erstellung fehlgeschlagen")
           return false

@@ -1,4 +1,4 @@
-export const BATCH_COMPRESS_VIDEO_ID = "-PFNNcTmV-U"
+export const BATCH_COMPRESS_VIDEO_ID = "3OLYURxpfCE"
 
 export function batchVideoStorageKey(videoId: string): string {
   return `pdffabrik.batch-video-position.${videoId}`
