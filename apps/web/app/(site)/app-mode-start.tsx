@@ -53,11 +53,10 @@ function Footer() {
     <footer className="border-t border-sidebar-border">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 md:px-10 md:py-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+          <div>
             <p className="text-sm font-semibold tracking-tight text-foreground">PDFFabrik.de</p>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-              Sensible Inhalte erkennen und dauerhaft schwärzen — mit Blick auf Vertraulichkeit,
-              nachvollziehbare Prüfungsschritte und Hosting dort, wo es eure Richtlinien vorgeben.
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              PDFs einfach gemacht.
             </p>
           </div>
           <div>
@@ -100,10 +99,36 @@ function Footer() {
               </li>
             </ul>
           </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Rechtliches
+            </p>
+            <ul className="mt-3 flex flex-col gap-2 text-sm">
+              <li>
+                <Link href="/impressum" className="text-foreground/90 hover:text-primary" prefetch>
+                  Impressum
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/datenschutz"
+                  className="text-foreground/90 hover:text-primary"
+                  prefetch
+                >
+                  Datenschutz
+                </Link>
+              </li>
+              <li>
+                <Link href="/widerruf" className="text-foreground/90 hover:text-primary" prefetch>
+                  Widerruf
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
-        <div className="mt-8 flex flex-col gap-2 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 border-t border-border pt-6">
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} PDFFabrik.de — Betrieb in deiner Verantwortung.
+            © {new Date().getFullYear()} PDFFabrik.de
           </p>
         </div>
       </div>

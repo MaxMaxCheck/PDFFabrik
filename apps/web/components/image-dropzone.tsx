@@ -151,14 +151,6 @@ export function ImageDropzone({
               : "Bilder in dieses Feld ziehen oder tippen zum Durchsuchen."}
         </p>
         <p className="text-xs text-muted-foreground">{heroHint}</p>
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="text-[11px] font-medium text-muted-foreground">
-            Formate:
-          </span>
-          <span className="rounded-md border border-sky-500/20 bg-white/80 px-2.5 py-0.5 text-xs font-medium text-sky-900 shadow-sm dark:border-sky-500/30 dark:bg-sky-900/50 dark:text-sky-100">
-            JPG · PNG · WebP · BMP
-          </span>
-        </div>
       </div>
       {dragError ? <p className="text-destructive mt-2 text-sm">{dragError}</p> : null}
     </div>

@@ -884,12 +884,12 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           {zipReady || (showComparison && resultData) ? (
             <Button
               type="button"
-              variant="secondary"
-              size="sm"
-              className="w-full gap-2"
+              variant="outline"
+              size="lg"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-base font-semibold"
               onClick={handleClear}
             >
-              <RefreshCw className="size-4" />
+              <RefreshCw className="size-5 shrink-0" strokeWidth={2.2} />
               Neu starten
             </Button>
           ) : null}

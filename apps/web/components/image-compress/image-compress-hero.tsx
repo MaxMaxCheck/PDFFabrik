@@ -3,13 +3,12 @@ import { cn } from "@workspace/ui/lib/utils"
 const DEFAULT_PILLS = [
   "Browser-basiert",
   "Kein Upload auf Server",
-  "JPG · PNG · WebP · BMP",
   "Sofort-Download",
 ] as const
 
 const DEFAULT_HEADING = "Bilder komprimieren"
 const DEFAULT_SUBLINE =
-  "Reduziere JPG-, PNG-, WebP- und BMP-Dateigrößen direkt im Browser. Kein Signup, kein Server-Upload, sofortiger Download – Qualität einstellen und Ergebnis vergleichen."
+  "Reduziere Bilddateigrößen direkt im Browser. Kein Signup, kein Server-Upload, sofortiger Download – Qualität einstellen und Ergebnis vergleichen."
 
 export function ImageCompressHero({
   heading = DEFAULT_HEADING,
