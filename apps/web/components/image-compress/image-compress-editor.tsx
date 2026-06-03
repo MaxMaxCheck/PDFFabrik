@@ -60,6 +60,74 @@ function presetQuality(p: Exclude<StrengthPreset, "custom">) {
   return 60
 }
 
+function sanitizeZipBaseName(name: string): string {
+  const base = name.replace(/\.[^./]+$/, "").trim() || "bild"
+  return base
+    .replace(/[/\\?%*:|"<>]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120)
+}
+
+function zipExtensionForExport(
+  format: string,
+  outType: string,
+  fileName: string
+): string {
+  if (format !== "auto") {
+    return format === "jpeg" ? "jpg" : format
+  }
+  if (outType) return outType === "jpeg" ? "jpg" : outType
+  const fromName = fileName.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase()
+  if (fromName === "jpeg") return "jpg"
+  if (fromName) return fromName
+  return "webp"
+}
+
+function uniqueZipEntryName(base: string, ext: string, used: Set<string>): string {
+  const safeExt = ext.replace(/^\./, "")
+  let name = `${base}.${safeExt}`
+  let n = 2
+  while (used.has(name)) {
+    name = `${base}-${n}.${safeExt}`
+    n += 1
+  }
+  used.add(name)
+  return name
+}
+
+function isHtmlOrTextPayload(buf: Uint8Array): boolean {
+  if (buf.length < 16) return false
+  const head = new TextDecoder().decode(buf.slice(0, 96)).trimStart().toLowerCase()
+  return (
+    head.startsWith("<!doctype") ||
+    head.startsWith("<html") ||
+    head.startsWith("<head") ||
+    (head.startsWith("<?xml") && head.includes("html"))
+  )
+}
+
+function detectImageExtension(buf: Uint8Array): string | null {
+  if (buf.length < 12) return null
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg"
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "png"
+  if (
+    buf[0] === 0x52 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x46 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50
+  ) {
+    return "webp"
+  }
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return "gif"
+  if (buf[0] === 0x42 && buf[1] === 0x4d) return "bmp"
+  return null
+}
+
 async function loadImageNaturalSize(
   objectUrl: string
 ): Promise<{ width: number; height: number }> {
@@ -206,9 +274,12 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
     async ({
       objectUrl,
       originalFile,
+      allowKeepOriginal = true,
     }: {
       objectUrl: string
       originalFile: File
+      /** ZIP-Export: immer Ziel-Format liefern, nicht unkomprimiertes Original. */
+      allowKeepOriginal?: boolean
     }): Promise<{ blob: Blob; outType: string; keptOriginal: boolean; usedDownscale: boolean }> => {
       const src = objectUrl
       const outFormat: ImageFormat | undefined =
@@ -219,7 +290,6 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
 
       setKeptOriginalNoGain(false)
       setOutputWasDownscaled(false)
-      setZipReady(null)
 
       let blob: Blob
       let usedDownscale = false
@@ -233,7 +303,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
 
         blob = await encodeAtDims(0, 0)
 
-        if (blob.size >= originalFile.size) {
+        if (allowKeepOriginal && blob.size >= originalFile.size) {
           try {
             const { width: nw, height: nh } = await loadImageNaturalSize(src)
             const longEdge = Math.max(nw, nh)
@@ -245,20 +315,20 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
               if (blobScaled.size < originalFile.size) {
                 blob = blobScaled
                 usedDownscale = true
-              } else {
+              } else if (allowKeepOriginal) {
                 blob = originalFile
               }
-            } else {
+            } else if (allowKeepOriginal) {
               blob = originalFile
             }
           } catch {
-            blob = originalFile
+            if (allowKeepOriginal) blob = originalFile
           }
         }
       } else {
         blob = await fromURL(src, quality, 0, 0, outFormat)
 
-        if (blob.size >= originalFile.size) {
+        if (allowKeepOriginal && blob.size >= originalFile.size) {
           try {
             const { width: nw, height: nh } = await loadImageNaturalSize(src)
             const longEdge = Math.max(nw, nh)
@@ -270,19 +340,19 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
               if (blobScaled.size < originalFile.size) {
                 blob = blobScaled
                 usedDownscale = true
-              } else {
+              } else if (allowKeepOriginal) {
                 blob = originalFile
               }
-            } else {
+            } else if (allowKeepOriginal) {
               blob = originalFile
             }
           } catch {
-            blob = originalFile
+            if (allowKeepOriginal) blob = originalFile
           }
         }
       }
 
-      const keptOriginal = blob === originalFile
+      const keptOriginal = allowKeepOriginal && blob === originalFile
       const typeFromBlob = blob.type.startsWith("image/")
         ? blob.type.slice("image/".length)
         : ""
@@ -305,6 +375,8 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
         const entries: Record<string, Uint8Array> = {}
         let totalInBytes = 0
         let totalOutBytes = 0
+        const usedNames = new Set<string>()
+        let added = 0
 
         for (let i = 0; i < selected.length; i++) {
           const f = selected[i]!
@@ -314,15 +386,32 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
             const { blob, outType } = await compressSingle({
               objectUrl,
               originalFile: f,
+              allowKeepOriginal: false,
             })
-            totalOutBytes += blob.size
-            const base = f.name.replace(/\.[^./]+$/, "") || `bild-${i + 1}`
-            const outName = `${base}.${outType || "webp"}`
             const buf = new Uint8Array(await blob.arrayBuffer())
+            if (isHtmlOrTextPayload(buf)) {
+              toast.error(`${f.name}: keine gültigen Bilddaten — übersprungen.`)
+              continue
+            }
+            const detected = detectImageExtension(buf)
+            if (!detected) {
+              toast.error(`${f.name}: Ausgabe ist kein Bild — übersprungen.`)
+              continue
+            }
+            totalOutBytes += buf.byteLength
+            const base = sanitizeZipBaseName(f.name) || `bild-${i + 1}`
+            const ext = zipExtensionForExport(format, outType || detected, f.name)
+            const outName = uniqueZipEntryName(base, ext, usedNames)
             entries[outName] = buf
+            added += 1
           } finally {
             URL.revokeObjectURL(objectUrl)
           }
+        }
+
+        if (added === 0) {
+          toast.error("ZIP: Keine gültigen Bilder zum Packen.")
+          return false
         }
 
         const zipped = zipSync(entries, { level: 6 })
@@ -333,7 +422,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           blob: zipBlob,
           totalInBytes,
           totalOutBytes,
-          count: selected.length,
+          count: added,
         })
         setPhase("comparing")
         toast.success("ZIP erstellt")
