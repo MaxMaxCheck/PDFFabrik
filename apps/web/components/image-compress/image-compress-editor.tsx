@@ -487,7 +487,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           return false
         }
 
-        const zipBlob = new Blob([zipped], { type: "application/zip" })
+        const zipBlob = new Blob([new Uint8Array(zipped)], { type: "application/zip" })
         const zipName = `bilder-komprimiert-${Date.now()}.zip`
         setZipReady({
           name: zipName,
