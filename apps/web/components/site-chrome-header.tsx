@@ -23,6 +23,7 @@ function pageTitleForPath(pathname: string): string {
     { test: (x) => x.startsWith("/pdf-redact-json"), title: "PDF Schwärzen (nur Text)" },
     { test: (x) => x.startsWith("/pdf-redact"), title: "PDF Schwärzen" },
     { test: (x) => x.startsWith("/compress-pdf"), title: "PDF komprimieren" },
+    { test: (x) => x.startsWith("/bilder-komprimieren"), title: "Bilder komprimieren" },
     { test: (x) => x.startsWith("/text-aus-bild"), title: "Text aus Bild (OCR)" },
     {
       test: (x) => x.startsWith("/meta-daten-loeschen"),

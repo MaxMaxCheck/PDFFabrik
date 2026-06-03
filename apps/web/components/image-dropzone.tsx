@@ -1,9 +1,15 @@
 "use client"
 
-import { useCallback, useState } from "react"
-import { useDropzone } from "react-dropzone"
+import { useCallback, useRef, useState } from "react"
+import { useDropzone, type FileRejection } from "react-dropzone"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, CloudUploadIcon } from "@hugeicons/core-free-icons"
+import {
+  MAX_IMAGE_BATCH,
+  capImageBatch,
+  getImageFilesFromDropEvent,
+  isSupportedImageFile,
+} from "@/lib/image-batch-files"
 import { cn } from "@workspace/ui/lib/utils"
 
 const IMAGE_ACCEPT = {
@@ -27,41 +33,80 @@ interface ImageDropzoneProps {
   maxFiles?: number
 }
 
+function dropRejectionMessage(rejections: FileRejection[], batchLimit: number): string {
+  const codes = new Set(rejections.flatMap((r) => r.errors.map((e) => e.code)))
+  if (codes.has("too-many-files")) {
+    return `Maximal ${batchLimit} Bilder auf einmal.`
+  }
+  return "Nur JPG, PNG, WebP oder BMP werden unterstützt."
+}
+
 export function ImageDropzone({
   onFiles,
   onBeforeSelect,
   disabled,
   variant = "hero",
   fileLabel = "",
-  heroHint = "Alles lokal im Browser — mehrere Bilder werden als ZIP exportiert.",
+  heroHint = "Alles lokal im Browser — mehrere Bilder oder ganze Ordner, Export als ZIP.",
   className,
   heroCtaMode = "select",
   onContinue,
   multiple = true,
-  maxFiles = 50,
+  maxFiles = MAX_IMAGE_BATCH,
 }: ImageDropzoneProps) {
   const [dragError, setDragError] = useState<string | null>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
 
-  const onDrop = useCallback(
-    (accepted: File[], rejected: { file: File }[]) => {
+  const applyFiles = useCallback(
+    (incoming: File[]) => {
       setDragError(null)
-      if (rejected.length > 0) {
-        setDragError("Nur JPG, PNG, WebP oder BMP werden unterstützt.")
+      const supported = incoming.filter(isSupportedImageFile)
+      if (supported.length === 0) {
+        setDragError("Keine unterstützten Bilder gefunden (JPG, PNG, WebP, BMP).")
         return
       }
-      if (accepted.length > 0) onFiles(accepted)
+      const { files, truncated } = capImageBatch(supported, maxFiles)
+      if (truncated) {
+        setDragError(
+          `Es wurden ${files.length} von ${supported.length} Bildern übernommen (Maximum ${maxFiles}).`
+        )
+      }
+      onFiles(files)
     },
-    [onFiles]
+    [maxFiles, onFiles]
+  )
+
+  const onDrop = useCallback(
+    (accepted: File[], rejected: FileRejection[]) => {
+      if (accepted.length > 0) {
+        applyFiles(accepted)
+        return
+      }
+      if (rejected.length > 0) {
+        setDragError(dropRejectionMessage(rejected, maxFiles))
+      }
+    },
+    [applyFiles, maxFiles]
   )
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: IMAGE_ACCEPT,
-    maxFiles,
+    maxFiles: 0,
     multiple,
     disabled,
     noClick: Boolean(onBeforeSelect),
+    getFilesFromEvent: getImageFilesFromDropEvent,
   })
+
+  const onFolderInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const list = Array.from(e.target.files ?? [])
+      e.target.value = ""
+      if (list.length > 0) applyFiles(list)
+    },
+    [applyFiles]
+  )
 
   const handleRootClick = useCallback(() => {
     if (!onBeforeSelect) return
@@ -151,6 +196,47 @@ export function ImageDropzone({
               : "Bilder in dieses Feld ziehen oder tippen zum Durchsuchen."}
         </p>
         <p className="text-xs text-muted-foreground">{heroHint}</p>
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (disabled) return
+              if (onBeforeSelect && !onBeforeSelect()) return
+              open()
+            }}
+            className="text-sky-800 underline-offset-2 hover:underline disabled:opacity-50 dark:text-sky-200"
+          >
+            Bilder auswählen
+          </button>
+          <span className="text-muted-foreground" aria-hidden>
+            ·
+          </span>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (disabled) return
+              if (onBeforeSelect && !onBeforeSelect()) return
+              folderInputRef.current?.click()
+            }}
+            className="text-sky-800 underline-offset-2 hover:underline disabled:opacity-50 dark:text-sky-200"
+          >
+            Ordner auswählen
+          </button>
+        </div>
+        <input
+          ref={folderInputRef}
+          type="file"
+          multiple
+          className="sr-only"
+          tabIndex={-1}
+          disabled={disabled}
+          onChange={onFolderInputChange}
+          {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+        />
       </div>
       {dragError ? <p className="text-destructive mt-2 text-sm">{dragError}</p> : null}
     </div>

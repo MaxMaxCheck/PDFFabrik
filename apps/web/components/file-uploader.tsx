@@ -20,6 +20,12 @@ import {
 } from "react-dropzone"
 import { toast } from "sonner"
 
+import {
+  MAX_IMAGE_BATCH,
+  capImageBatch,
+  getImageFilesFromDropEvent,
+  isSupportedImageFile,
+} from "@/lib/image-batch-files"
 import { buttonVariants } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { cn } from "@workspace/ui/lib/utils"
@@ -78,12 +84,13 @@ export const FileUploader = forwardRef<
     const [activeIndex, setActiveIndex] = useState(-1)
     const {
       accept = { "image/*": [".jpg", ".jpeg", ".png", ".gif"] },
-      maxFiles = 1,
-      maxSize = 4 * 1024 * 1024,
+      maxFiles: batchLimit = MAX_IMAGE_BATCH,
+      maxSize = 80 * 1024 * 1024,
       multiple = true,
+      getFilesFromEvent,
     } = dropzoneOptions
 
-    const reSelectAll = maxFiles === 1 ? true : reSelect
+    const reSelectAll = batchLimit === 1 ? true : reSelect
     const direction: DirectionOptions = dir === "rtl" ? "rtl" : "ltr"
 
     const removeFileFromSet = useCallback(
@@ -153,42 +160,46 @@ export const FileUploader = forwardRef<
 
     const onDrop = useCallback(
       (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
-        const files = acceptedFiles
-
-        if (!files) {
-          toast.error("Datei-Fehler (evtl. zu groß).")
+        if (acceptedFiles.length === 0 && rejectedFiles.length > 0) {
+          const first = rejectedFiles[0]?.errors?.[0]
+          if (first?.code === "file-too-large") {
+            toast.error(
+              `Datei ist zu groß. Max. ${Math.round((maxSize / 1024 / 1024) * 10) / 10} MB`
+            )
+          } else if (first?.code === "too-many-files") {
+            toast.error(`Maximal ${batchLimit} Bilder auf einmal.`)
+          } else {
+            toast.error(first?.message ?? "Datei konnte nicht übernommen werden.")
+          }
           return
         }
 
-        const newValues: File[] = value ? [...value] : []
+        const merged = reSelectAll
+          ? acceptedFiles
+          : [...(value ?? []), ...acceptedFiles]
+        const supported = merged.filter(isSupportedImageFile)
+        const { files, truncated } = capImageBatch(supported, batchLimit)
 
-        if (reSelectAll) {
-          newValues.splice(0, newValues.length)
+        if (files.length === 0) {
+          toast.error("Keine unterstützten Bilder (JPG, PNG, WebP, BMP).")
+          return
         }
 
-        files.forEach((file) => {
-          if (newValues.length < maxFiles) newValues.push(file)
-        })
+        onValueChange(files)
 
-        onValueChange(newValues.length ? newValues : null)
+        if (truncated) {
+          toast.message(
+            `${files.length} von ${supported.length} Bildern übernommen (Maximum ${batchLimit}).`
+          )
+        }
 
-        if (rejectedFiles.length > 0) {
-          for (let i = 0; i < rejectedFiles.length; i++) {
-            const first = rejectedFiles[i]?.errors?.[0]
-            if (first?.code === "file-too-large") {
-              toast.error(
-                `Datei ist zu groß. Max. ${Math.round((maxSize / 1024 / 1024) * 10) / 10}MB`
-              )
-              break
-            }
-            if (first?.message) {
-              toast.error(first.message)
-              break
-            }
-          }
+        if (rejectedFiles.length > 0 && acceptedFiles.length > 0) {
+          toast.message(
+            `${rejectedFiles.length} Datei(en) übersprungen (falsches Format oder zu groß).`
+          )
         }
       },
-      [reSelectAll, value, maxFiles, maxSize, onValueChange]
+      [reSelectAll, value, batchLimit, maxSize, onValueChange]
     )
 
     useEffect(() => {
@@ -196,10 +207,17 @@ export const FileUploader = forwardRef<
         setIsLOF(false)
         return
       }
-      setIsLOF(value.length === maxFiles)
-    }, [value, maxFiles])
+      setIsLOF(value.length >= batchLimit)
+    }, [value, batchLimit])
 
-    const opts = dropzoneOptions ?? { accept, maxFiles, maxSize, multiple }
+    const opts = {
+      ...(dropzoneOptions ?? { accept, maxSize, multiple }),
+      accept,
+      maxSize,
+      multiple,
+      maxFiles: 0,
+      getFilesFromEvent: getFilesFromEvent ?? getImageFilesFromDropEvent,
+    }
 
     const dropzoneState = useDropzone({
       ...opts,

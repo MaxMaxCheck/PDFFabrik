@@ -29,8 +29,10 @@ export function ToolitPromoBanner({
         )}
       >
         <p className="min-w-0 text-sm text-violet-950/90 dark:text-violet-100/90">
-          <span className="font-semibold text-violet-950 dark:text-violet-50">Toolit</span>
-          {` — Tastenkürzel, Favoriten & schnellere Abläufe rund um deine PDF-Workflows. `}
+          <span className="font-semibold text-violet-950 dark:text-violet-50">
+            Toolit
+          </span>
+          {` — weitere Tools, die dir helfen, deine Bilder-Workflows zu verbessern. `}
           <span className="whitespace-nowrap" aria-hidden>
             ✨
           </span>
@@ -73,7 +75,7 @@ type Props = {
 const toolCardLinkClass = cn(
   "group flex items-start gap-3 rounded-xl bg-muted/40 p-4 text-left",
   "transition-colors hover:bg-muted/70",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
 )
 
 export function LandingToolGridSection({
@@ -87,12 +89,15 @@ export function LandingToolGridSection({
   toolitLearnMoreHref = DEFAULT_TOOLIT_LEARN_MORE,
 }: Props) {
   const primaryTool =
-    LANDING_TOOL_CARDS.find((t) => t.href === "/pdf-redact") ?? LANDING_TOOL_CARDS[0]
-  const otherTools = LANDING_TOOL_CARDS.filter((t) => t.href !== primaryTool.href)
+    LANDING_TOOL_CARDS.find((t) => t.href === "/pdf-redact") ??
+    LANDING_TOOL_CARDS[0]
+  const otherTools = LANDING_TOOL_CARDS.filter(
+    (t) => t.href !== primaryTool.href
+  )
 
   return (
     <div
-      className={cn("mx-auto w-full min-w-0 max-w-6xl", className)}
+      className={cn("mx-auto w-full max-w-6xl min-w-0", className)}
       data-testid="landing-tool-grid"
     >
       {includeHeader ? (
@@ -115,20 +120,20 @@ export function LandingToolGridSection({
             prefetch
             className={cn(
               toolCardLinkClass,
-              "w-full min-w-0 bg-primary/10 hover:bg-primary/15 sm:p-5",
+              "w-full min-w-0 bg-primary/10 hover:bg-primary/15 sm:p-5"
             )}
           >
             <span
               className={cn(
                 "flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white sm:size-12",
-                primaryTool.accent,
+                primaryTool.accent
               )}
               aria-hidden
             >
               {primaryTool.icon}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-base font-semibold leading-snug text-foreground group-hover:text-primary sm:text-lg">
+              <span className="block text-base leading-snug font-semibold text-foreground group-hover:text-primary sm:text-lg">
                 {primaryTool.title}
               </span>
               <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
@@ -144,18 +149,22 @@ export function LandingToolGridSection({
         <ul className="grid list-none grid-cols-1 gap-3 sm:grid-cols-3">
           {otherTools.map((t) => (
             <li key={t.href} className="min-w-0">
-              <Link href={t.href} prefetch className={cn(toolCardLinkClass, "h-full")}>
+              <Link
+                href={t.href}
+                prefetch
+                className={cn(toolCardLinkClass, "h-full")}
+              >
                 <span
                   className={cn(
                     "flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white",
-                    t.accent,
+                    t.accent
                   )}
                   aria-hidden
                 >
                   {t.icon}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold leading-snug text-foreground group-hover:text-primary">
+                  <span className="block text-sm leading-snug font-semibold text-foreground group-hover:text-primary">
                     {t.title}
                   </span>
                   <span className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
@@ -168,7 +177,9 @@ export function LandingToolGridSection({
         </ul>
       </div>
 
-      {includeToolitPromo ? <ToolitPromoBanner learnMoreHref={toolitLearnMoreHref} /> : null}
+      {includeToolitPromo ? (
+        <ToolitPromoBanner learnMoreHref={toolitLearnMoreHref} />
+      ) : null}
     </div>
   )
 }
