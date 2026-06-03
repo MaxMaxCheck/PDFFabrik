@@ -918,49 +918,54 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
               ? "Bereit zum Download"
               : "Bereit"}
           </p>
-          <Button
-            type="button"
-            size="lg"
-            className={cn(
-              "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-base font-semibold",
-              (zipReady || (showComparison && resultData)) &&
-                !compressBusy &&
-                "animate-pulse"
-            )}
-            disabled={compressBusy}
-            onClick={async () => {
-              if (compressBusy) return
-              if (zipReady) {
-                handleDownload()
-                return
-              }
-              if (showComparison && resultData) {
-                handleDownload()
-                return
-              }
-              setCompressBusy(true)
-              try {
-                const ok = await runCompression()
-                if (ok) setPhase("comparing")
-              } finally {
-                setCompressBusy(false)
-              }
-            }}
-          >
-            {compressBusy ? (
-              "Arbeite…"
-            ) : zipReady || (showComparison && resultData) ? (
-              <>
-                <DownloadCloud className="size-5 shrink-0" strokeWidth={2.2} />
-                Download
-              </>
-            ) : (
-              <>
-                <Zap className="size-5 shrink-0" strokeWidth={2.2} />
-                Komprimieren
-              </>
-            )}
-          </Button>
+          <div className="relative w-full">
+            {zipReady || (showComparison && resultData) ? (
+              !compressBusy ? (
+                <span
+                  className="pointer-events-none absolute -inset-0.5 z-0 rounded-md border-2 border-primary animate-pulse"
+                  aria-hidden
+                />
+              ) : null
+            ) : null}
+            <Button
+              type="button"
+              size="lg"
+              className="relative z-10 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-base font-semibold"
+              disabled={compressBusy}
+              onClick={async () => {
+                if (compressBusy) return
+                if (zipReady) {
+                  handleDownload()
+                  return
+                }
+                if (showComparison && resultData) {
+                  handleDownload()
+                  return
+                }
+                setCompressBusy(true)
+                try {
+                  const ok = await runCompression()
+                  if (ok) setPhase("comparing")
+                } finally {
+                  setCompressBusy(false)
+                }
+              }}
+            >
+              {compressBusy ? (
+                "Arbeite…"
+              ) : zipReady || (showComparison && resultData) ? (
+                <>
+                  <DownloadCloud className="size-5 shrink-0" strokeWidth={2.2} />
+                  Download
+                </>
+              ) : (
+                <>
+                  <Zap className="size-5 shrink-0" strokeWidth={2.2} />
+                  Komprimieren
+                </>
+              )}
+            </Button>
+          </div>
           {zipReady || (showComparison && resultData) ? (
             <Button
               type="button"

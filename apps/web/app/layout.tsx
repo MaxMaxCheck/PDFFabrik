@@ -45,7 +45,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           {children}
-          <Toaster richColors />
+          <Toaster richColors position="top-right" offset={{ top: 56, right: 16 }} />
           <CookieConsentBanner />
         </ThemeProvider>
       </body>
