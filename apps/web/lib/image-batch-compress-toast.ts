@@ -1,5 +1,3 @@
-import { toast } from "sonner"
-
 export const BATCH_COMPRESS_REPORT_FILENAME = "komprimierung-hinweise.txt"
 
 export type BatchCompressFailure = {
@@ -38,43 +36,4 @@ export function buildBatchCompressReport(
 
 export function batchReportToZipBytes(text: string): Uint8Array {
   return new TextEncoder().encode(text)
-}
-
-export function startBatchCompressToast(total: number): string | number {
-  return toast.loading(`0 von ${total} komprimiert…`, { duration: Infinity })
-}
-
-export function updateBatchCompressToast(
-  toastId: string | number,
-  succeeded: number,
-  failed: number,
-  processed: number,
-  total: number
-) {
-  const parts = [`${succeeded} komprimiert`]
-  if (failed > 0) parts.push(`${failed} fehlerhaft`)
-  toast.loading(`${parts.join(" · ")} (${processed}/${total})`, {
-    id: toastId,
-    duration: Infinity,
-  })
-}
-
-export function finishBatchCompressToast(
-  toastId: string | number,
-  succeeded: number,
-  failed: number,
-  zipOk: boolean
-) {
-  if (!zipOk) {
-    toast.error("Keine Bilder konnten komprimiert werden.", { id: toastId })
-    return
-  }
-  if (failed > 0) {
-    toast.success(
-      `ZIP bereit — ${succeeded} komprimiert, ${failed} fehlerhaft (Details in ${BATCH_COMPRESS_REPORT_FILENAME})`,
-      { id: toastId }
-    )
-    return
-  }
-  toast.success(`ZIP bereit — ${succeeded} Bilder komprimiert`, { id: toastId })
 }

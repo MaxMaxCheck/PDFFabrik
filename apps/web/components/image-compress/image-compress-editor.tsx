@@ -26,11 +26,17 @@ import {
   type BatchCompressFailure,
   batchReportToZipBytes,
   buildBatchCompressReport,
-  finishBatchCompressToast,
-  startBatchCompressToast,
-  updateBatchCompressToast,
 } from "@/lib/image-batch-compress-toast"
+import {
+  IMAGE_BATCH_CHUNK_SIZE,
+  IMAGE_BATCH_CONCURRENCY,
+  chunkCount,
+  mapWithConcurrency,
+  yieldToMain,
+} from "@/lib/image-batch-compress-runner"
 import { MAX_IMAGE_BATCH, getImageFilesFromDropEvent } from "@/lib/image-batch-files"
+import { BatchCompressBusyView } from "@/components/image-compress/batch-compress-busy-view"
+import { BatchCompressVideoHost } from "@/components/image-compress/batch-compress-video-host"
 import { FileUploader, FileUploaderContent } from "@/components/file-uploader"
 import { Loader } from "@/components/loader"
 import { ImageCompressIcons as Icons } from "@/components/image-compress/icons"
@@ -79,19 +85,24 @@ function sanitizeZipBaseName(name: string): string {
     .slice(0, 120)
 }
 
-function zipExtensionForExport(
-  format: string,
-  outType: string,
-  fileName: string
-): string {
-  if (format !== "auto") {
-    return format === "jpeg" ? "jpg" : format
-  }
-  if (outType) return outType === "jpeg" ? "jpg" : outType
-  const fromName = fileName.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase()
-  if (fromName === "jpeg") return "jpg"
-  if (fromName) return fromName
-  return "webp"
+/** Dateiendung für Export — immer vom gewählten Format, nicht vom erkannten Inhalt. */
+function exportExtensionForFormat(format: string): string {
+  if (format === "jpeg") return "jpg"
+  if (format === "auto") return "webp"
+  return format
+}
+
+function zipEntryExtension(format: string, buf: Uint8Array): string {
+  if (format !== "auto") return exportExtensionForFormat(format)
+  return detectImageExtension(buf) ?? "webp"
+}
+
+function bufferMatchesExportFormat(buf: Uint8Array, format: string): boolean {
+  const detected = detectImageExtension(buf)
+  if (!detected) return false
+  if (format === "auto") return true
+  if (format === "jpeg") return detected === "jpg"
+  return detected === format
 }
 
 function uniqueZipEntryName(base: string, ext: string, used: Set<string>): string {
@@ -119,7 +130,7 @@ function isHtmlOrTextPayload(buf: Uint8Array): boolean {
 
 function detectImageExtension(buf: Uint8Array): string | null {
   if (buf.length < 12) return null
-  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg"
+  if (buf[0] === 0xff && buf[1] === 0xd8) return "jpg"
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "png"
   if (
     buf[0] === 0x52 &&
@@ -276,9 +287,29 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
     total: number
     succeeded: number
     failed: number
+    chunkCurrent: number
+    chunkTotal: number
   } | null>(null)
 
   const countdownRunId = useRef(0)
+  const prevFormatRef = useRef(format)
+
+  useEffect(() => {
+    if (prevFormatRef.current === format) return
+    prevFormatRef.current = format
+    countdownRunId.current += 1
+    setZipReady(null)
+    if (resultData?.startsWith("blob:")) {
+      URL.revokeObjectURL(resultData)
+      setResultData(null)
+      setResultSize(null)
+      setResultType(null)
+    }
+    if (phase === "comparing") {
+      const n = files?.length ?? 0
+      setPhase(n > 1 ? "ready" : n === 1 && imageData ? "countdown" : "empty")
+    }
+  }, [format, files, imageData, phase, resultData])
 
   async function getImageTypeFromUrl(url: string) {
     const response = await fetch(url)
@@ -388,13 +419,31 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
       setCompressBusy(true)
       setZipReady(null)
       const total = selected.length
-      const progressToastId = startBatchCompressToast(total)
+      const totalChunks = chunkCount(total, IMAGE_BATCH_CHUNK_SIZE)
       const failures: BatchCompressFailure[] = []
-      setBatchProgress({ processed: 0, total, succeeded: 0, failed: 0 })
+      setBatchProgress({
+        processed: 0,
+        total,
+        succeeded: 0,
+        failed: 0,
+        chunkCurrent: 0,
+        chunkTotal: totalChunks,
+      })
 
-      const syncBatchProgress = (succeeded: number, failed: number, processed: number) => {
-        setBatchProgress({ processed, total, succeeded, failed })
-        updateBatchCompressToast(progressToastId, succeeded, failed, processed, total)
+      const syncBatchProgress = (
+        succeeded: number,
+        failed: number,
+        processed: number,
+        chunkCurrent: number
+      ) => {
+        setBatchProgress({
+          processed,
+          total,
+          succeeded,
+          failed,
+          chunkCurrent,
+          chunkTotal: totalChunks,
+        })
       }
 
       try {
@@ -403,74 +452,120 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
         let totalOutBytes = 0
         const usedNames = new Set<string>()
         let added = 0
+        let processed = 0
 
-        for (let i = 0; i < selected.length; i++) {
-          const f = selected[i]!
-          const objectUrl = URL.createObjectURL(f)
-          try {
-            let blob: Blob
-            let outType: string
-            try {
-              const result = await compressSingle({
-                objectUrl,
-                originalFile: f,
-                allowKeepOriginal: false,
-              })
-              blob = result.blob
-              outType = result.outType
-            } catch {
-              failures.push({
-                fileName: f.name,
-                reason: "Komprimierung fehlgeschlagen (Datei konnte nicht verarbeitet werden).",
-              })
-              syncBatchProgress(added, failures.length, i + 1)
-              continue
-            }
+        for (
+          let chunkStart = 0;
+          chunkStart < selected.length;
+          chunkStart += IMAGE_BATCH_CHUNK_SIZE
+        ) {
+          const chunkIndex = Math.floor(chunkStart / IMAGE_BATCH_CHUNK_SIZE) + 1
+          const chunkFiles = selected.slice(
+            chunkStart,
+            chunkStart + IMAGE_BATCH_CHUNK_SIZE
+          )
 
-            let buf: Uint8Array
-            try {
-              buf = new Uint8Array(await blob.arrayBuffer())
-            } catch {
-              failures.push({
-                fileName: f.name,
-                reason: "Komprimierte Datei konnte nicht gelesen werden.",
-              })
-              syncBatchProgress(added, failures.length, i + 1)
-              continue
-            }
+          const chunkResults = await mapWithConcurrency(
+            chunkFiles,
+            IMAGE_BATCH_CONCURRENCY,
+            async (f, j) => {
+              const globalIndex = chunkStart + j
+              const objectUrl = URL.createObjectURL(f)
+              try {
+                let blob: Blob
+                try {
+                  const result = await compressSingle({
+                    objectUrl,
+                    originalFile: f,
+                    allowKeepOriginal: false,
+                  })
+                  blob = result.blob
+                } catch {
+                  return {
+                    ok: false as const,
+                    failure: {
+                      fileName: f.name,
+                      reason:
+                        "Komprimierung fehlgeschlagen (Datei konnte nicht verarbeitet werden).",
+                    },
+                  }
+                }
 
-            if (isHtmlOrTextPayload(buf)) {
-              failures.push({
-                fileName: f.name,
-                reason: "Keine gültigen Bilddaten (Datei ist beschädigt oder kein Bild).",
-              })
-              syncBatchProgress(added, failures.length, i + 1)
+                let buf: Uint8Array
+                try {
+                  buf = new Uint8Array(await blob.arrayBuffer())
+                } catch {
+                  return {
+                    ok: false as const,
+                    failure: {
+                      fileName: f.name,
+                      reason: "Komprimierte Datei konnte nicht gelesen werden.",
+                    },
+                  }
+                }
+
+                if (isHtmlOrTextPayload(buf)) {
+                  return {
+                    ok: false as const,
+                    failure: {
+                      fileName: f.name,
+                      reason:
+                        "Keine gültigen Bilddaten (Datei ist beschädigt oder kein Bild).",
+                    },
+                  }
+                }
+                const detected = detectImageExtension(buf)
+                if (!detected) {
+                  return {
+                    ok: false as const,
+                    failure: {
+                      fileName: f.name,
+                      reason: "Ausgabe ist kein unterstütztes Bildformat.",
+                    },
+                  }
+                }
+                if (!bufferMatchesExportFormat(buf, format)) {
+                  return {
+                    ok: false as const,
+                    failure: {
+                      fileName: f.name,
+                      reason: `Encoder lieferte ${detected}, gewünscht war ${format}. Bitte erneut komprimieren.`,
+                    },
+                  }
+                }
+
+                return {
+                  ok: true as const,
+                  buf,
+                  inBytes: f.size,
+                  outBytes: buf.byteLength,
+                  base: sanitizeZipBaseName(f.name) || `bild-${globalIndex + 1}`,
+                  ext: zipEntryExtension(format, buf),
+                }
+              } finally {
+                URL.revokeObjectURL(objectUrl)
+              }
+            }
+          )
+
+          for (const result of chunkResults) {
+            processed += 1
+            if (!result.ok) {
+              failures.push(result.failure)
               continue
             }
-            const detected = detectImageExtension(buf)
-            if (!detected) {
-              failures.push({
-                fileName: f.name,
-                reason: "Ausgabe ist kein unterstütztes Bildformat.",
-              })
-              syncBatchProgress(added, failures.length, i + 1)
-              continue
-            }
-            totalInBytes += f.size
-            totalOutBytes += buf.byteLength
-            const base = sanitizeZipBaseName(f.name) || `bild-${i + 1}`
-            const ext = zipExtensionForExport(format, outType || detected, f.name)
-            const outName = uniqueZipEntryName(base, ext, usedNames)
-            entries[outName] = buf
+            totalInBytes += result.inBytes
+            totalOutBytes += result.outBytes
+            const outName = uniqueZipEntryName(result.base, result.ext, usedNames)
+            entries[outName] = result.buf
             added += 1
-            syncBatchProgress(added, failures.length, i + 1)
-          } finally {
-            URL.revokeObjectURL(objectUrl)
           }
+
+          syncBatchProgress(added, failures.length, processed, chunkIndex)
+          await yieldToMain()
         }
 
         if (added === 0) {
-          finishBatchCompressToast(progressToastId, 0, failures.length, false)
           return false
         }
 
@@ -479,11 +574,13 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           entries[BATCH_COMPRESS_REPORT_FILENAME] = batchReportToZipBytes(report)
         }
 
+        syncBatchProgress(added, failures.length, total, totalChunks)
+
         let zipped: Uint8Array
         try {
-          zipped = zipSync(entries, { level: 6 })
+          zipped = zipSync(entries, { level: 3 })
         } catch {
-          toast.error("ZIP-Erstellung fehlgeschlagen", { id: progressToastId })
+          toast.error("ZIP-Erstellung fehlgeschlagen")
           return false
         }
 
@@ -497,10 +594,9 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           count: added,
         })
         setPhase("comparing")
-        finishBatchCompressToast(progressToastId, added, failures.length, true)
         return true
       } catch {
-        toast.error("Unerwarteter Fehler bei der ZIP-Erstellung", { id: progressToastId })
+        toast.error("Unerwarteter Fehler bei der ZIP-Erstellung")
         return false
       } finally {
         setCompressBusy(false)
@@ -548,7 +644,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
       toast.error("Komprimierung fehlgeschlagen")
       return false
     }
-  }, [compressSingle, files, imageData])
+  }, [compressSingle, files, imageData, format])
 
   const runCompressionRef = useRef(runCompression)
   useEffect(() => {
@@ -617,7 +713,10 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
       return
     }
     if (!resultData) return
-    const ext = resultType ?? (format === "auto" ? imageType : format) ?? "webp"
+    const ext =
+      format === "auto"
+        ? resultType ?? imageType ?? "webp"
+        : exportExtensionForFormat(format)
     const link = document.createElement("a")
     link.href = resultData
     link.download = `bild-komprimiert-${Date.now()}.${ext}`
@@ -697,8 +796,36 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
     </Button>
   )
 
+  const batchCompressOverlay =
+    compressBusy && multiSelected ? (
+      <div
+        className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-xl"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <Loader size={28} className="relative z-10 text-muted-foreground" />
+        {batchProgress ? (
+          <div className="relative z-10 space-y-0.5 px-4 text-center">
+            <p className="text-sm font-medium text-foreground">Komprimiere…</p>
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {batchProgress.processed}/{batchProgress.total}
+              {batchProgress.failed > 0 ? ` · ${batchProgress.failed} Fehler` : ""}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Stapel {batchProgress.chunkCurrent}/{batchProgress.chunkTotal}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    ) : null
+
   const workspacePanel = hasImage ? (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col sm:flex-row">
+    <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col sm:flex-row">
+      {!hero ? (
+        <BatchCompressVideoHost active={compressBusy && multiSelected} />
+      ) : null}
+      {batchCompressOverlay}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col justify-center p-3 sm:p-4">
         <div className="relative flex min-h-0 w-full max-w-full flex-1 flex-col items-center justify-center rounded-xl bg-muted/30 p-2 ring-1 ring-border/25 dark:bg-muted/20">
           {imageData && !multiSelected ? (
@@ -1039,7 +1166,8 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
 
   if (hero) {
     return (
-      <div className="flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+      <div className="relative flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+        <BatchCompressVideoHost active={compressBusy} />
         <h1 className="sr-only">Bilder komprimieren</h1>
         {compressionSettingsDialog}
 
@@ -1052,28 +1180,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
         ) : null}
 
         {compressBusy ? (
-          <div
-            className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4"
-            role="status"
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <Loader size={36} className="text-muted-foreground" />
-            <div className="space-y-1 text-center">
-              <p className="text-base font-medium text-foreground">
-                Bilder werden komprimiert…
-              </p>
-              {batchProgress ? (
-                <p className="text-sm tabular-nums text-muted-foreground">
-                  {batchProgress.succeeded} komprimiert
-                  {batchProgress.failed > 0
-                    ? ` · ${batchProgress.failed} fehlerhaft`
-                    : ""}{" "}
-                  ({batchProgress.processed}/{batchProgress.total})
-                </p>
-              ) : null}
-            </div>
-          </div>
+          <BatchCompressBusyView progress={batchProgress} />
         ) : (
           <div
             className={cn(
