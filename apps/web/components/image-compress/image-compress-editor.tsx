@@ -274,7 +274,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
   } | null>(null)
 
   const [quality, setQuality] = useState<number>(presetQuality("mittel"))
-  const [format, setFormat] = useState<string>("webp")
+  const [format, setFormat] = useState<string>("jpeg")
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [emptyShellHover, setEmptyShellHover] = useState(false)
 
@@ -1203,7 +1203,6 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
   if (hero) {
     return (
       <div className="relative flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
-        <BatchCompressVideoHost active={compressBusy} />
         <h1 className="sr-only">Bilder komprimieren</h1>
         {compressionSettingsDialog}
 
