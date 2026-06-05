@@ -105,6 +105,10 @@ function bufferMatchesExportFormat(buf: Uint8Array, format: string): boolean {
   return detected === format
 }
 
+function fileListSignature(list: File[]): string {
+  return list.map((f) => `${f.name}\0${f.size}\0${f.lastModified}`).join("\n")
+}
+
 function uniqueZipEntryName(base: string, ext: string, used: Set<string>): string {
   const safeExt = ext.replace(/^\./, "")
   let name = `${base}.${safeExt}`
@@ -292,6 +296,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
   } | null>(null)
 
   const countdownRunId = useRef(0)
+  const compressionInFlightRef = useRef(false)
   const prevFormatRef = useRef(format)
 
   useEffect(() => {
@@ -447,9 +452,13 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
   )
 
   const runCompression = useCallback(async (): Promise<boolean> => {
+    if (compressionInFlightRef.current) return false
+
     const selected = files ?? []
     if (selected.length === 0) return false
 
+    compressionInFlightRef.current = true
+    try {
     // Multi-file: on demand ZIP only
     if (selected.length > 1) {
       setCompressBusy(true)
@@ -671,14 +680,19 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
           { duration: 6000 }
         )
       } else if (usedDownscale) {
-        toast.success("Optimiert (zusätzlich verkleinert für weniger Bytes)")
+        toast.success("Optimiert (zusätzlich verkleinert für weniger Bytes)", {
+          id: "image-compress-optimized",
+        })
       } else {
-        toast.success("Optimiert")
+        toast.success("Optimiert", { id: "image-compress-optimized" })
       }
       return true
     } catch {
       toast.error("Komprimierung fehlgeschlagen")
       return false
+    }
+    } finally {
+      compressionInFlightRef.current = false
     }
   }, [compressSingle, files, imageData, format])
 
@@ -689,6 +703,11 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
 
   const handleDataChange = async (file: File[] | null) => {
     setEmptyShellHover(false)
+
+    if (file?.[0] && files && imageData && fileListSignature(file) === fileListSignature(files)) {
+      return
+    }
+
     if (imageData) URL.revokeObjectURL(imageData)
     if (resultData?.startsWith("blob:")) URL.revokeObjectURL(resultData)
 
@@ -768,9 +787,16 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
       if (countdownRunId.current !== runId) return
       void (async () => {
         if (countdownRunId.current !== runId) return
-        const ok = await runCompressionRef.current()
-        if (countdownRunId.current !== runId) return
-        if (ok) setPhase("comparing")
+        setCompressBusy(true)
+        try {
+          const ok = await runCompressionRef.current()
+          if (countdownRunId.current !== runId) return
+          if (ok) setPhase("comparing")
+        } finally {
+          if (countdownRunId.current === runId) {
+            setCompressBusy(false)
+          }
+        }
       })()
     }, PREVIEW_PAUSE_MS)
 
@@ -1085,7 +1111,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
             {zipReady || (showComparison && resultData) ? (
               !compressBusy ? (
                 <span
-                  className="pointer-events-none absolute -inset-0.5 z-0 rounded-md border-2 border-primary animate-pulse"
+                  className="pointer-events-none absolute -inset-0.5 z-0 rounded-md bg-blue-500 animate-pulse"
                   aria-hidden
                 />
               ) : null
@@ -1205,14 +1231,6 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
       <div className="relative flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
         <h1 className="sr-only">Bilder komprimieren</h1>
         {compressionSettingsDialog}
-
-        {(zipReady || (showComparison && resultData)) && !compressBusy ? (
-          <div className="shrink-0 border-b border-primary/25 bg-primary/5 px-4 py-2.5 text-sm text-foreground lg:px-6">
-            {zipReady
-              ? "ZIP ist bereit — klicke auf Download."
-              : "Fertig — klicke auf Download."}
-          </div>
-        ) : null}
 
         {compressBusy ? (
           <BatchCompressBusyView progress={batchProgress} />
