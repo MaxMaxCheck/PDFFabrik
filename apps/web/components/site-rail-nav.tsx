@@ -452,7 +452,7 @@ export function SiteRailNav({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col pt-12">
-          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pb-1.5 [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-1.5 [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin]">
             {SITE_HOME_NAV.map((item) => (
               <RailLink key={item.href} item={item} pathname={pathname} />
             ))}
@@ -476,7 +476,7 @@ export function SiteRailNav({
               <RailLink key={item.href} item={item} pathname={pathname} />
             ))}
           </div>
-          <div className="shrink-0 pb-1.5">
+          <div className="shrink-0">
             {isPending ? (
               <div className="flex min-h-[3.25rem] w-full items-center justify-center">
                 <span className="text-[9px] text-site-rail-foreground/45">…</span>

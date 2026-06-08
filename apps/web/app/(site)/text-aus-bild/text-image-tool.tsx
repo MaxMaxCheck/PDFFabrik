@@ -7,6 +7,7 @@ import { extractImageText, type ImageTextResponse } from "@/lib/api-client"
 import { useSiteChromeTopLoading } from "@/components/site-chrome-top-loading"
 import { Button } from "@workspace/ui/components/button"
 import { LoadingSpinner } from "@/app/_pdf_redact_shared/category-filters"
+import { SITE_CHROME_PAGE_ROOT_CLASS } from "@/lib/site-chrome-layout"
 import { cn } from "@workspace/ui/lib/utils"
 
 const ACCEPTED_TYPES = new Set([
@@ -102,7 +103,8 @@ export function ImageTextTool() {
   return (
     <div
       className={cn(
-        "flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-background text-foreground",
+        SITE_CHROME_PAGE_ROOT_CLASS,
+        "bg-background text-foreground",
       )}
     >
       <h1 className="sr-only">Text aus Bild erkennen</h1>

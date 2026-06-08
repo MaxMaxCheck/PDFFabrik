@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowReloadHorizontalIcon } from "@hugeicons/core-free-icons"
-import { FreeTrialSheet } from "@/components/free-trial-sheet"
 import { SiteChromeUserMenu } from "@/components/site-chrome-user-menu"
 import { SiteMobileNav } from "@/components/site-mobile-nav"
 import { useAppWorkspaceActions } from "@/components/app-workspace-actions"
@@ -70,7 +69,7 @@ export function SiteChromeHeader({ className }: { className?: string }) {
   return (
     <header
       className={cn(
-        "relative z-10 grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-2 text-sidebar-foreground sm:px-2.5 md:px-3 lg:px-4",
+        "z-10 grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 overflow-hidden px-2 text-sidebar-foreground sm:gap-2 sm:px-2.5 md:px-3 lg:relative lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-4",
         SITE_CHROME_TOP_BAR_CLASS,
         SITE_CHROME_TOP_BAR_SURFACE,
         className
@@ -107,7 +106,7 @@ export function SiteChromeHeader({ className }: { className?: string }) {
           </h1>
         </div>
       </div>
-      <div className="flex min-w-0 max-w-full justify-center justify-self-center px-1">
+      <div className="hidden min-w-0 max-w-full justify-center justify-self-center px-1 lg:flex">
         {onPdfRedactJson && workspaceDocumentName ? (
           <span
             className="max-w-[min(18rem,70vw)] truncate text-center text-sm font-normal text-muted-foreground"
@@ -117,8 +116,7 @@ export function SiteChromeHeader({ className }: { className?: string }) {
           </span>
         ) : null}
       </div>
-      <div className="flex min-w-0 items-center justify-end justify-self-end gap-2">
-        <FreeTrialSheet />
+      <div className="flex min-w-0 shrink-0 items-center justify-end justify-self-end gap-1 sm:gap-2">
         {isPending ? (
           <span className="text-xs text-muted-foreground" aria-hidden>
             …

@@ -13,36 +13,39 @@ export function AppModeStartPage() {
     <div className="flex min-h-0 min-w-0 flex-col bg-sidebar text-sidebar-foreground">
       <main className="flex-1">
         <LandingHero />
-
         <LandingValueProps />
 
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 md:px-10">
+        <div className="mx-auto w-full max-w-[90rem] px-5 sm:px-8 lg:px-12 xl:px-16">
           <AppModeStartUsageSummary />
         </div>
 
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:px-10 md:py-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Werkzeuge
-          </p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-            Alles für sichere PDFs — an einem Ort
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
-            Schwärzen, Metadaten prüfen oder Dateien verkleinern. Wähle das passende Tool —
-            ohne zwischen Diensten zu wechseln.
-          </p>
-          <LandingToolGridSection
-            includeHeader={false}
-            includeToolitPromo={true}
-            className="mt-6 max-w-none"
-          />
-        </div>
+        <section className="border-b border-sidebar-border">
+          <div className="mx-auto w-full max-w-[90rem] px-5 py-20 sm:px-8 lg:px-12 lg:py-28 xl:px-16">
+            <div className="grid gap-8 lg:grid-cols-[.7fr_1.3fr] lg:gap-20">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                  Werkzeuge
+                </p>
+                <h2 className="mt-5 max-w-md text-4xl leading-[1.02] font-semibold tracking-[-0.05em] text-balance sm:text-5xl">
+                  Alles für saubere Dokumente.
+                </h2>
+                <p className="mt-5 max-w-sm text-sm leading-6 text-muted-foreground">
+                  Schwärzen, Metadaten prüfen oder Dateien verkleinern. Ein
+                  fokussierter Werkzeugkasten ohne unnötige Umwege.
+                </p>
+              </div>
+              <LandingToolGridSection
+                includeHeader={false}
+                includeToolitPromo={true}
+                className="max-w-none"
+              />
+            </div>
+          </div>
+        </section>
 
         <LandingHowItWorks />
-
         <LandingCtaBand />
       </main>
-
       <Footer />
     </div>
   )
@@ -50,86 +53,41 @@ export function AppModeStartPage() {
 
 function Footer() {
   return (
-    <footer className="border-t border-sidebar-border">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 md:px-10 md:py-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+    <footer>
+      <div className="mx-auto w-full max-w-[90rem] px-5 py-12 sm:px-8 lg:px-12 xl:px-16">
+        <div className="flex flex-col gap-10 border-b border-sidebar-border pb-10 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-sm font-semibold tracking-tight text-foreground">PDFFabrik.de</p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              PDFs einfach gemacht.
+            <p className="text-lg font-semibold tracking-[-0.035em]">
+              PDFFabrik.de
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Vertrauliche PDFs. Sauber gelöst.
             </p>
           </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Produkt
-            </p>
-            <ul className="mt-3 flex flex-col gap-2 text-sm">
-              <li>
-                <Link href="/pdf-redact" className="text-foreground/90 hover:text-primary" prefetch>
-                  PDF Schwärzen
-                </Link>
-              </li>
-              <li>
-                <Link href="/docs" className="text-foreground/90 hover:text-primary" prefetch>
-                  Dokumentation
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/meta-daten-anzeigen"
-                  className="text-foreground/90 hover:text-primary"
-                  prefetch
-                >
-                  Metadaten anzeigen
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/meta-daten-loeschen"
-                  className="text-foreground/90 hover:text-primary"
-                  prefetch
-                >
-                  Metadaten löschen
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-foreground/90 hover:text-primary" prefetch>
-                  Blog
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Rechtliches
-            </p>
-            <ul className="mt-3 flex flex-col gap-2 text-sm">
-              <li>
-                <Link href="/impressum" className="text-foreground/90 hover:text-primary" prefetch>
-                  Impressum
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/datenschutz"
-                  className="text-foreground/90 hover:text-primary"
-                  prefetch
-                >
-                  Datenschutz
-                </Link>
-              </li>
-              <li>
-                <Link href="/widerruf" className="text-foreground/90 hover:text-primary" prefetch>
-                  Widerruf
-                </Link>
-              </li>
-            </ul>
+          <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+            <Link href="/pdf-redact" className="hover:opacity-50" prefetch>
+              PDF schwärzen
+            </Link>
+            <Link href="/docs" className="hover:opacity-50" prefetch>
+              Dokumentation
+            </Link>
+            <Link href="/blog" className="hover:opacity-50" prefetch>
+              Blog
+            </Link>
+            <Link href="/impressum" className="hover:opacity-50" prefetch>
+              Impressum
+            </Link>
+            <Link href="/datenschutz" className="hover:opacity-50" prefetch>
+              Datenschutz
+            </Link>
+            <Link href="/widerruf" className="hover:opacity-50" prefetch>
+              Widerruf
+            </Link>
           </div>
         </div>
-        <div className="mt-8 border-t border-border pt-6">
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} PDFFabrik.de
-          </p>
+        <div className="flex flex-col gap-2 pt-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} PDFFabrik.de</p>
+          <p>Entwickelt für sensible Dokumente.</p>
         </div>
       </div>
     </footer>

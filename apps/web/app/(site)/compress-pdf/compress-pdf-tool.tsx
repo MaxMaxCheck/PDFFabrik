@@ -18,6 +18,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 import { PdfRedactSidebarInset } from "@/app/_pdf_redact_shared/pdf-redact-sidebar-inset"
 import { PdfScrollViewer } from "@/components/pdf-scroll-viewer"
+import { SITE_CHROME_PAGE_ROOT_CLASS } from "@/lib/site-chrome-layout"
 import { cn } from "@workspace/ui/lib/utils"
 import { LoadingSpinner } from "@/app/_pdf_redact_shared/category-filters"
 
@@ -137,9 +138,7 @@ export function CompressPdfTool() {
       ? Math.round((1 - result.compressedSize / result.originalSize) * 100)
       : null
 
-  const wrapClass = cn(
-    "flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground",
-  )
+  const wrapClass = cn(SITE_CHROME_PAGE_ROOT_CLASS, "bg-sidebar text-sidebar-foreground")
 
   // ── Done ────────────────────────────────────────────────────────────────────
   if (step === "done") {

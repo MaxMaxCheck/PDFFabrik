@@ -30,6 +30,7 @@ import {
   cleanExtractedTextArtifacts,
   previewAnonymizedPlainText,
 } from "@/lib/text-redaction-preview"
+import { SITE_CHROME_PAGE_ROOT_CLASS } from "@/lib/site-chrome-layout"
 import { cn } from "@workspace/ui/lib/utils"
 import { CountUp } from "@workspace/ui/components/count-up"
 import {
@@ -398,7 +399,7 @@ export default function SimpleTextPage() {
   )
 
   return (
-    <div className="flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+    <div className={cn(SITE_CHROME_PAGE_ROOT_CLASS, "bg-sidebar text-sidebar-foreground")}>
       <h1 className="sr-only">PDF Schwärzen – nur Text</h1>
 
       {error && (

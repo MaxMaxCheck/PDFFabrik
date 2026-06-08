@@ -1,4 +1,6 @@
 import { LANDING_TOOL_CARDS } from "@/lib/landing-tool-cards"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 import Link from "next/link"
@@ -19,29 +21,23 @@ export function ToolitPromoBanner({
 
   return (
     <div
-      className={cn("mt-4 w-full min-w-0", className)}
+      className={cn("mt-3 w-full min-w-0", className)}
       data-testid="toolit-promo"
     >
       <div
         className={cn(
-          "flex w-full flex-col items-stretch justify-between gap-4 rounded-xl p-4 sm:flex-row sm:items-center",
-          "bg-gradient-to-r from-violet-100/90 to-violet-50/80 dark:from-violet-950/50 dark:to-violet-900/20"
+          "flex w-full flex-col items-stretch justify-between gap-4 border-t border-sidebar-border py-4 sm:flex-row sm:items-center"
         )}
       >
-        <p className="min-w-0 text-sm text-violet-950/90 dark:text-violet-100/90">
-          <span className="font-semibold text-violet-950 dark:text-violet-50">
-            Toolit
-          </span>
-          {` — weitere Tools, die dir helfen, deine Bilder-Workflows zu verbessern. `}
-          <span className="whitespace-nowrap" aria-hidden>
-            ✨
-          </span>
+        <p className="min-w-0 text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">Toolit</span>
+          {` — weitere Werkzeuge für moderne Bild-Workflows.`}
         </p>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="w-full shrink-0 self-center rounded-xl border-violet-300/80 bg-white text-violet-800 hover:bg-violet-50 sm:w-auto dark:border-violet-500/40 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/50"
+          className="h-8 w-full shrink-0 self-center rounded-full border-sidebar-border bg-transparent text-xs sm:w-auto"
           asChild
         >
           {external ? (
@@ -63,7 +59,7 @@ type Props = {
   className?: string
   /** Sektionsüberschriften „Beliebte PDF-Tools“ / „Werkzeuge“ (Startseite ohne Cookie). */
   includeHeader?: boolean
-  /** Toolit-Werbebox unter dem Grid (z. B. auf [`AppModeStartPage`](/) separat darunter). */
+  /** Toolit-Werbebox unter dem Grid (z. B. auf [`AppModeStartPage`](/) separat darunter). */
   includeToolitPromo?: boolean
   id?: string
   eyebrow?: string
@@ -73,8 +69,8 @@ type Props = {
 }
 
 const toolCardLinkClass = cn(
-  "group flex items-start gap-3 rounded-xl bg-muted/40 p-4 text-left",
-  "transition-colors hover:bg-muted/70",
+  "group flex items-start gap-4 border-t border-sidebar-border py-5 text-left",
+  "transition-opacity hover:opacity-55",
   "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
 )
 
@@ -113,19 +109,16 @@ export function LandingToolGridSection({
         </>
       ) : null}
 
-      <div className={cn("flex flex-col gap-3", includeHeader && "mt-6")}>
+      <div className={cn("flex flex-col", includeHeader && "mt-6")}>
         <div className="w-full min-w-0">
           <Link
             href={primaryTool.href}
             prefetch
-            className={cn(
-              toolCardLinkClass,
-              "w-full min-w-0 bg-primary/10 hover:bg-primary/15 sm:p-5"
-            )}
+            className={cn(toolCardLinkClass, "w-full min-w-0 border-t-0 pt-0")}
           >
             <span
               className={cn(
-                "flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white sm:size-12",
+                "flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white",
                 primaryTool.accent
               )}
               aria-hidden
@@ -133,22 +126,27 @@ export function LandingToolGridSection({
               {primaryTool.icon}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-base leading-snug font-semibold text-foreground group-hover:text-primary sm:text-lg">
+              <span className="block text-lg leading-snug font-semibold tracking-[-0.025em] text-foreground">
                 {primaryTool.title}
               </span>
               <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
                 {primaryTool.description}
               </span>
-              <span className="mt-2 inline-block text-sm font-medium text-primary">
-                Jetzt öffnen →
-              </span>
             </span>
+            <HugeiconsIcon
+              icon={ArrowUpRight01Icon}
+              className="mt-1 size-4 shrink-0 text-muted-foreground"
+              strokeWidth={1.7}
+            />
           </Link>
         </div>
 
-        <ul className="grid list-none grid-cols-1 gap-3 sm:grid-cols-3">
+        <ul className="grid list-none grid-cols-1 sm:grid-cols-2">
           {otherTools.map((t) => (
-            <li key={t.href} className="min-w-0">
+            <li
+              key={t.href}
+              className="min-w-0 sm:odd:pr-5 sm:even:border-l sm:even:pl-5"
+            >
               <Link
                 href={t.href}
                 prefetch
@@ -156,7 +154,7 @@ export function LandingToolGridSection({
               >
                 <span
                   className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white",
+                    "flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white",
                     t.accent
                   )}
                   aria-hidden
@@ -164,13 +162,18 @@ export function LandingToolGridSection({
                   {t.icon}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm leading-snug font-semibold text-foreground group-hover:text-primary">
+                  <span className="block text-sm leading-snug font-semibold text-foreground">
                     {t.title}
                   </span>
                   <span className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                     {t.description}
                   </span>
                 </span>
+                <HugeiconsIcon
+                  icon={ArrowUpRight01Icon}
+                  className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                  strokeWidth={1.7}
+                />
               </Link>
             </li>
           ))}

@@ -56,6 +56,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Slider } from "@workspace/ui/components/slider"
+import { SITE_CHROME_PAGE_ROOT_CLASS } from "@/lib/site-chrome-layout"
 import { cn } from "@workspace/ui/lib/utils"
 
 /** Short pause so the preview is visible before compression runs. */
@@ -1228,7 +1229,7 @@ export function ImageCompressEditor({ variant = "default" }: ImageCompressEditor
 
   if (hero) {
     return (
-      <div className="relative flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+      <div className={cn("relative", SITE_CHROME_PAGE_ROOT_CLASS, "bg-sidebar text-sidebar-foreground")}>
         <h1 className="sr-only">Bilder komprimieren</h1>
         {compressionSettingsDialog}
 

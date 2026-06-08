@@ -52,14 +52,15 @@ export function FreeTrialSheet() {
         <Button
           type="button"
           size="sm"
-          className="h-8 gap-1.5 rounded-full pr-1.5 pl-1"
+          className="h-8 shrink-0 gap-1.5 rounded-full pr-1.5 pl-1"
+          aria-label="Kostenlos testen"
         >
           <HugeiconsIcon
             icon={CrownIcon}
-            className="size-5.5 rounded-full border border-border bg-muted p-0.5 text-amber-600 dark:text-amber-400"
+            className="size-5.5 shrink-0 rounded-full border border-border bg-muted p-0.5 text-amber-600 dark:text-amber-400"
             strokeWidth={1.8}
           />
-          <span>Kostenlos testen</span>
+          <span className="hidden min-[420px]:inline">Kostenlos testen</span>
         </Button>
       </SheetTrigger>
       <SheetContent

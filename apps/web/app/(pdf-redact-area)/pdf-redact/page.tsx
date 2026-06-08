@@ -29,6 +29,7 @@ import { PdfRedactSidebarInset } from "@/app/_pdf_redact_shared/pdf-redact-sideb
 import { cn } from "@workspace/ui/lib/utils"
 import { useAppWorkspaceActions } from "@/components/app-workspace-actions"
 import { useSiteChromeTopLoading } from "@/components/site-chrome-top-loading"
+import { SITE_CHROME_PAGE_ROOT_CLASS } from "@/lib/site-chrome-layout"
 import { markFirstPdfUpload } from "@/lib/site-prefs"
 import { recordPdfToolUsage } from "@/lib/record-pdf-tool-usage"
 import { usePdfToolAccess } from "@/hooks/use-pdf-tool-access"
@@ -560,7 +561,7 @@ export default function Page() {
   }, [activeCategories, error])
 
   return (
-    <div className="flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+    <div className={cn(SITE_CHROME_PAGE_ROOT_CLASS, "bg-sidebar text-sidebar-foreground")}>
       <h1 className="sr-only">PDF Schwärzen</h1>
 
       {error && (

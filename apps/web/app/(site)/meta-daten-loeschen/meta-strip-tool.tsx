@@ -6,6 +6,7 @@ import { downloadBlob, stripPdfMetadata } from "@/lib/api-client"
 import { markFirstPdfUpload } from "@/lib/site-prefs"
 import { useSiteChromeTopLoading } from "@/components/site-chrome-top-loading"
 import { Button } from "@workspace/ui/components/button"
+import { SITE_CHROME_PAGE_ROOT_CLASS } from "@/lib/site-chrome-layout"
 import { cn } from "@workspace/ui/lib/utils"
 import { LoadingSpinner } from "@/app/_pdf_redact_shared/category-filters"
 import { recordPdfToolUsage } from "@/lib/record-pdf-tool-usage"
@@ -72,7 +73,8 @@ export function MetaStripTool() {
   return (
     <div
       className={cn(
-        "flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground",
+        SITE_CHROME_PAGE_ROOT_CLASS,
+        "bg-sidebar text-sidebar-foreground",
       )}
     >
       <h1 className="sr-only">Metadaten löschen (PDF)</h1>
