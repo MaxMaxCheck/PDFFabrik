@@ -1,5 +1,4 @@
 import { getSessionCookie } from "better-auth/cookies"
-import { hasSiteUnlock, normalizeSiteLockNext, SITE_LOCK_COOKIE_NAME } from "@/lib/site-lock"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
@@ -18,29 +17,7 @@ const needsLogin = (pathname: string) =>
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith("/api")) {
-    return NextResponse.next()
-  }
-
-  if (pathname === "/locked") {
-    if (hasSiteUnlock(request.cookies.get(SITE_LOCK_COOKIE_NAME)?.value)) {
-      const url = request.nextUrl.clone()
-      url.pathname = normalizeSiteLockNext(request.nextUrl.searchParams.get("next"))
-      url.search = ""
-      return NextResponse.redirect(url)
-    }
-    return NextResponse.next()
-  }
-
-  if (!hasSiteUnlock(request.cookies.get(SITE_LOCK_COOKIE_NAME)?.value)) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/locked"
-    url.search = ""
-    url.searchParams.set("next", `${pathname}${request.nextUrl.search}`)
-    return NextResponse.redirect(url)
-  }
-
-  if (!needsLogin(pathname)) {
+  if (pathname.startsWith("/api") || !needsLogin(pathname)) {
     return NextResponse.next()
   }
 

@@ -1,10 +1,14 @@
+import { formatApiKeyLabel } from "@/lib/api-key-display"
 import { prisma } from "@workspace/prisma"
 import { formatMoney, getIntegrationPricing } from "@/lib/integration-pricing"
 
 export type ApiKeyUsageRow = {
   apiKeyId: string
+  userId: string
+  userName: string | null
+  userEmail: string
   name: string | null
-  prefix: string
+  label: string
   callCount: number
   costCents: number
 }
@@ -40,20 +44,30 @@ export async function buildApiUsageReport(options: {
     keyIds.length > 0
       ? await prisma.apiKey.findMany({
           where: { id: { in: keyIds } },
-          select: { id: true, name: true },
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { name: true, email: true } },
+          },
         })
       : []
 
-  const nameById = new Map(keys.map((k) => [k.id, k.name]))
+  const keyById = new Map(keys.map((k) => [k.id, k]))
 
   const rows: ApiKeyUsageRow[] = events
     .map((e) => {
       const callCount = e._count._all
       const costCents = callCount * pricing.pricePerCallCents
+      const key = keyById.get(e.apiKeyId)
+      const name = key?.name ?? null
       return {
         apiKeyId: e.apiKeyId,
-        name: nameById.get(e.apiKeyId) ?? null,
-        prefix: `pdffabrik_sk_${e.apiKeyId}.…`,
+        userId: key?.userId ?? "",
+        userName: key?.user.name ?? null,
+        userEmail: key?.user.email ?? "—",
+        name,
+        label: formatApiKeyLabel(e.apiKeyId, name),
         callCount,
         costCents,
       }

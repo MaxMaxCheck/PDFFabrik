@@ -5,7 +5,8 @@ import {
   verifyApiToken,
 } from "@/lib/api-token"
 import { logApiKeyUsage } from "@/lib/log-api-key-usage"
-import { pdfToolApiV1Base } from "@/lib/pdf-tool-api-url"
+import { pdfInternalFetchHeaders } from "@/lib/pdf-internal"
+import { pdfToolApiBase } from "@/lib/pdf-tool-api-url"
 import { prisma } from "@workspace/prisma"
 import { NextResponse } from "next/server"
 
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
   const url = new URL(request.url)
   const categories = url.searchParams.get("categories")
 
-  const base = pdfToolApiV1Base()
+  const base = `${pdfToolApiBase()}/v1`
   const upstream = new FormData()
   upstream.append("file", file, file.name || "dokument.pdf")
 
@@ -94,7 +95,11 @@ export async function POST(request: Request) {
 
   let res: Response
   try {
-    res = await fetch(detectUrl.toString(), { method: "POST", body: upstream })
+    res = await fetch(detectUrl.toString(), {
+      method: "POST",
+      headers: pdfInternalFetchHeaders(),
+      body: upstream,
+    })
   } catch (e) {
     console.error("[integrations/pdf-detect] upstream fetch failed", e)
     return jsonErr(

@@ -1,10 +1,11 @@
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import FileResponse
 from rq.exceptions import NoSuchJobError
 from rq.job import Job, JobStatus
 
+from lib.internal_auth import assert_job_owner_access
 from lib.redis_client import get_redis
 from lib.settings import JOBS_DIR
 
@@ -42,7 +43,11 @@ def _infer_job_kind(job_id: str) -> str | None:
 
 
 @router.get("/jobs/{job_id}")
-def get_job(job_id: str):
+def get_job(
+    job_id: str,
+    x_job_owner_id: str | None = Header(None, alias="X-Job-Owner-Id"),
+):
+    assert_job_owner_access(job_id, x_job_owner_id)
     try:
         job = Job.fetch(job_id, connection=get_redis())
         job.refresh()
@@ -84,7 +89,11 @@ def get_job(job_id: str):
 
 
 @router.get("/jobs/{job_id}/download")
-def download_job(job_id: str):
+def download_job(
+    job_id: str,
+    x_job_owner_id: str | None = Header(None, alias="X-Job-Owner-Id"),
+):
+    assert_job_owner_access(job_id, x_job_owner_id)
     try:
         job = Job.fetch(job_id, connection=get_redis())
         job.refresh()

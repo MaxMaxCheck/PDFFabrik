@@ -15,7 +15,7 @@ type KeyRow = {
   name: string | null
   createdAt: string
   lastUsedAt: string | null
-  prefix: string
+  label: string
   defaultCategories: string[]
   defaultMode: string
 }
@@ -215,8 +215,7 @@ export function ApiKeysManager() {
                 className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0 text-sm">
-                  <code className="text-xs text-muted-foreground">{k.prefix}</code>
-                  {k.name && <p className="mt-0.5 font-medium text-foreground">{k.name}</p>}
+                  <p className="font-medium text-foreground">{k.label}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {k.defaultCategories.length > 0
                       ? `${k.defaultCategories.length} Kategorien · ${k.defaultMode}`

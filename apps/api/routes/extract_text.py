@@ -11,7 +11,7 @@ router = APIRouter()
 @router.post("/tools/extract-text")
 async def extract_text_endpoint(file: UploadFile = File(...)):
     """
-    Reiner Fließtext für serverseitige Nutzung (z. B. Next /chat → Ollama),
+    Reiner Fließtext für serverseitige Nutzung (z. B. Next-API-Routen),
     ohne pdf.js/Worker im Node-Bundle.
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):

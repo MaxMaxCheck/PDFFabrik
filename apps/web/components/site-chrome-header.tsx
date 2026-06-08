@@ -33,7 +33,6 @@ function pageTitleForPath(pathname: string): string {
       test: (x) => x.startsWith("/meta-daten-anzeigen"),
       title: "PDF-Metadaten anzeigen",
     },
-    { test: (x) => x.startsWith("/chat"), title: "KI-Chat" },
     { test: (x) => x.startsWith("/konto/api-keys/nutzung"), title: "API-Nutzung" },
     { test: (x) => x.startsWith("/konto/api-keys"), title: "API-Schlüssel" },
     { test: (x) => x.startsWith("/docs"), title: "Dokumentation" },

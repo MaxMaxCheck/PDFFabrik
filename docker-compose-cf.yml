@@ -12,6 +12,7 @@ services:
       REDIS_URL: "${REDIS_URL}"
       JOBS_DIR: /data/jobs
       RQ_QUEUE_NAME: "${RQ_QUEUE_NAME:-pdf_jobs}"
+      PDF_INTERNAL_SERVICE_TOKEN: "${PDF_INTERNAL_SERVICE_TOKEN}"
       OMP_NUM_THREADS: "8"
       TOKENIZERS_PARALLELISM: "false"
     volumes:

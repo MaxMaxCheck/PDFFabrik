@@ -9,7 +9,8 @@ import {
   resolveKeyMode,
 } from "@/lib/integration-categories"
 import { logApiKeyUsage } from "@/lib/log-api-key-usage"
-import { pdfToolApiV1Base } from "@/lib/pdf-tool-api-url"
+import { pdfInternalFetchHeaders } from "@/lib/pdf-internal"
+import { pdfToolApiBase } from "@/lib/pdf-tool-api-url"
 import { prisma } from "@workspace/prisma"
 import { NextResponse } from "next/server"
 
@@ -84,6 +85,16 @@ export async function POST(request: Request) {
     return jsonErr({ error: "Feld «file» (PDF) erforderlich." }, 400)
   }
 
+  const integrationClient =
+    request.headers.get("x-integration-client")?.trim() || "unknown"
+  const integrationSource =
+    request.headers.get("x-integration-source")?.trim() || "unknown"
+  const keyLabel = row.name?.trim() || row.id.slice(0, 8)
+
+  console.info(
+    `[integration/pdf-redact-json] request client=${integrationClient} source=${integrationSource} key=${keyLabel} file=${file.name} size=${file.size}`,
+  )
+
   const keyCategories = resolveKeyCategories(row.defaultCategories)
   const keyMode = resolveKeyMode(row.defaultMode)
 
@@ -96,7 +107,7 @@ export async function POST(request: Request) {
       ? String(form.get("mode"))
       : keyMode
 
-  const base = pdfToolApiV1Base()
+  const base = `${pdfToolApiBase()}/v1`
   const upstream = new FormData()
   upstream.append("file", file, file.name || "dokument.pdf")
   upstream.append("categories", categories)
@@ -104,7 +115,11 @@ export async function POST(request: Request) {
 
   let res: Response
   try {
-    res = await fetch(`${base}/pdf-redact-json`, { method: "POST", body: upstream })
+    res = await fetch(`${base}/pdf-redact-json`, {
+      method: "POST",
+      headers: pdfInternalFetchHeaders(),
+      body: upstream,
+    })
   } catch (e) {
     console.error("[integrations/pdf-redact-json] upstream fetch failed", e)
     return jsonErr(
@@ -125,6 +140,9 @@ export async function POST(request: Request) {
     } catch {
       if (bodyText?.trim()) detail = bodyText.slice(0, 500)
     }
+    console.error(
+      `[integration/pdf-redact-json] failed client=${integrationClient} source=${integrationSource} key=${keyLabel} file=${file.name} status=${res.status} detail=${detail}`,
+    )
     return jsonErr({ error: detail }, res.status >= 400 ? res.status : 502)
   }
 
@@ -136,6 +154,23 @@ export async function POST(request: Request) {
     .catch(() => {})
 
   logApiKeyUsage(row.id, row.userId, "pdf-redact-json")
+
+  let detections = 0
+  let textChars = 0
+  try {
+    const payload = JSON.parse(bodyText) as {
+      detections_count?: number
+      text?: string
+    }
+    detections = payload.detections_count ?? 0
+    textChars = payload.text?.length ?? 0
+  } catch {
+    // ignore parse for logging
+  }
+
+  console.info(
+    `[integration/pdf-redact-json] ok client=${integrationClient} source=${integrationSource} key=${keyLabel} file=${file.name} detections=${detections} textChars=${textChars}`,
+  )
 
   void prisma.userPdfToolStat
     .upsert({

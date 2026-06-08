@@ -10,6 +10,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
+import { ApiUsagePanel } from "@/app/(site)/konto/api-keys/api-usage-panel"
+import { formatApiKeyLabel } from "@/lib/api-key-display"
+import {
+  INTEGRATION_CATEGORY_LABELS,
+  type IntegrationCategory,
+} from "@/lib/integration-categories"
 import { PDF_TOOL_LABELS, type PdfToolKind } from "@/lib/pdf-tool-usage"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -43,7 +49,20 @@ export default async function AdminUserUsagePage({
 
   const user = await prisma.user.findUnique({
     where: { id },
-    include: { pdfToolStats: true },
+    include: {
+      pdfToolStats: true,
+      apiKeys: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          lastUsedAt: true,
+          defaultCategories: true,
+          defaultMode: true,
+        },
+      },
+    },
   })
 
   if (!user) notFound()
@@ -120,6 +139,59 @@ export default async function AdminUserUsagePage({
             </p>
           </div>
         </div>
+
+        {/* API keys */}
+        <section>
+          <h2 className="mb-4 text-sm font-semibold">API-Schlüssel</h2>
+          {user.apiKeys.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Dieser Nutzer hat noch keine API-Schlüssel angelegt.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {user.apiKeys.map((key) => {
+                const categoryLabels =
+                  key.defaultCategories.length > 0
+                    ? key.defaultCategories.map(
+                        (c) =>
+                          INTEGRATION_CATEGORY_LABELS[c as IntegrationCategory] ??
+                          c,
+                      )
+                    : ["Alle Kategorien"]
+                return (
+                  <div
+                    key={key.id}
+                    className="flex flex-col gap-2 rounded-xl border border-border bg-card px-5 py-4 shadow-sm"
+                  >
+                    <p className="font-medium">{formatApiKeyLabel(key.id, key.name)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {categoryLabels.join(" · ")} · Modus {key.defaultMode}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Erstellt{" "}
+                      {key.createdAt.toLocaleString("de-DE", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                      {key.lastUsedAt
+                        ? ` · Zuletzt genutzt ${key.lastUsedAt.toLocaleString("de-DE", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })}`
+                        : " · Noch nicht genutzt"}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* API billing for this user */}
+        <section>
+          <h2 className="mb-4 text-sm font-semibold">API-Abrechnung (Integrations-Aufrufe)</h2>
+          <ApiUsagePanel mode="admin" userId={user.id} hidePricing />
+        </section>
 
         {/* Per-tool breakdown */}
         <section>

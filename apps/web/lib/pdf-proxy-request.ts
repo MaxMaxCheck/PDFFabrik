@@ -1,14 +1,26 @@
 import {
-  consumePdfToolDailyAccess,
-  getCurrentSessionUserId,
-  getPdfToolAccessMessage,
-} from "@/lib/pdf-tool-access"
+  authorizePdfToolUsage,
+  requirePdfApiSession,
+} from "@/lib/authorize-pdf-api"
+import { pdfInternalFetchHeaders } from "@/lib/pdf-internal"
 import { pdfToolApiBase } from "@/lib/pdf-tool-api-url"
 import { getAppSession, isAdmin } from "@/lib/get-session"
 import { isPdfToolKind, type PdfToolKind } from "@/lib/pdf-tool-usage"
 import { NextResponse } from "next/server"
 
 const REDACT_TOOLS: PdfToolKind[] = ["anonymize_full", "anonymize_text"]
+
+/** Nur über /api/v1/integrations/* mit API-Schlüssel — nicht über den Browser-Proxy. */
+const INTEGRATION_ONLY_HEADS = new Set(["detect", "pdf-redact-json"])
+
+const TOOL_PATH_KIND: Record<string, PdfToolKind> = {
+  "tools/read-metadata": "metadata_view",
+  "tools/strip-metadata": "metadata_strip",
+}
+
+function pathKey(segments: string[]): string {
+  return segments.join("/")
+}
 
 function isRedactUpstreamPath(segments: string[]): boolean {
   const head = segments[0]
@@ -17,6 +29,14 @@ function isRedactUpstreamPath(segments: string[]): boolean {
 
 function isAdminUpstreamPath(segments: string[]): boolean {
   return segments[0] === "workers"
+}
+
+function isHealthPath(segments: string[]): boolean {
+  return segments.length === 1 && segments[0] === "health"
+}
+
+function isToolPath(segments: string[]): boolean {
+  return segments[0] === "tools" && segments.length >= 2
 }
 
 function copyProxyResponseHeaders(source: Headers): Headers {
@@ -28,17 +48,51 @@ function copyProxyResponseHeaders(source: Headers): Headers {
   return target
 }
 
-function forwardRequestHeaders(source: Headers): Headers {
-  const target = new Headers()
+function forwardRequestHeaders(source: Headers, userId?: string): Headers {
   const contentType = source.get("content-type")
-  if (contentType) target.set("content-type", contentType)
-  return target
+  return pdfInternalFetchHeaders({
+    userId,
+    extra: contentType ? { "content-type": contentType } : undefined,
+  })
 }
+
+type ProxyAuthResult =
+  | { ok: true; userId?: string }
+  | { ok: false; response: NextResponse }
 
 async function authorizePdfProxy(
   req: Request,
-  segments: string[]
-): Promise<{ ok: true } | { ok: false; response: NextResponse }> {
+  segments: string[],
+): Promise<ProxyAuthResult> {
+  if (segments.length === 0) {
+    return {
+      ok: false,
+      response: NextResponse.json({ detail: "Unbekannter API-Pfad." }, { status: 404 }),
+    }
+  }
+
+  const head = segments[0]!
+  if (INTEGRATION_ONLY_HEADS.has(head)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          detail:
+            "Dieser Endpunkt ist nur über die Integrations-API mit API-Schlüssel verfügbar.",
+        },
+        { status: 403 },
+      ),
+    }
+  }
+
+  if (isHealthPath(segments)) {
+    if (req.method === "GET") return { ok: true }
+    return {
+      ok: false,
+      response: NextResponse.json({ detail: "Methode nicht erlaubt." }, { status: 405 }),
+    }
+  }
+
   if (isAdminUpstreamPath(segments)) {
     const session = await getAppSession()
     if (!session || !isAdmin(session.user)) {
@@ -50,51 +104,55 @@ async function authorizePdfProxy(
     return { ok: true }
   }
 
-  if (!isRedactUpstreamPath(segments)) {
-    return { ok: true }
-  }
+  if (isRedactUpstreamPath(segments)) {
+    const sessionAuth = await requirePdfApiSession()
+    if (!sessionAuth.ok) return sessionAuth
 
-  const userId = await getCurrentSessionUserId()
-  if (!userId) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        {
-          detail:
-            "Bitte melde dich an oder registriere dich, um dieses PDF-Tool zu nutzen.",
-        },
-        { status: 401 }
-      ),
+    if (segments[0] === "upload" && req.method === "POST") {
+      const { searchParams } = new URL(req.url)
+      const tool = searchParams.get("tool")
+      if (!tool || !isPdfToolKind(tool) || !REDACT_TOOLS.includes(tool)) {
+        return {
+          ok: false,
+          response: NextResponse.json({ detail: "Ungültiges PDF-Tool." }, { status: 400 }),
+        }
+      }
+
+      const toolAuth = await authorizePdfToolUsage(sessionAuth.userId, tool, {
+        consume: true,
+      })
+      if (!toolAuth.ok) return toolAuth
     }
+
+    return { ok: true, userId: sessionAuth.userId }
   }
 
-  if (segments[0] === "upload" && req.method === "POST") {
-    const { searchParams } = new URL(req.url)
-    const tool = searchParams.get("tool")
-    if (!tool || !isPdfToolKind(tool) || !REDACT_TOOLS.includes(tool)) {
+  if (isToolPath(segments)) {
+    if (req.method !== "POST") {
       return {
         ok: false,
-        response: NextResponse.json({ detail: "Ungültiges PDF-Tool." }, { status: 400 }),
+        response: NextResponse.json({ detail: "Methode nicht erlaubt." }, { status: 405 }),
       }
     }
 
-    const access = await consumePdfToolDailyAccess(userId, tool)
-    if (!access.canUse && !access.isUnlimited) {
-      return {
-        ok: false,
-        response: NextResponse.json(
-          {
-            detail:
-              getPdfToolAccessMessage(access) ??
-              "Dieses PDF-Tool ist heute nicht mehr verfügbar.",
-          },
-          { status: 403 }
-        ),
-      }
+    const sessionAuth = await requirePdfApiSession()
+    if (!sessionAuth.ok) return sessionAuth
+
+    const kind = TOOL_PATH_KIND[pathKey(segments)]
+    if (kind) {
+      const toolAuth = await authorizePdfToolUsage(sessionAuth.userId, kind, {
+        consume: true,
+      })
+      if (!toolAuth.ok) return toolAuth
     }
+
+    return { ok: true, userId: sessionAuth.userId }
   }
 
-  return { ok: true }
+  return {
+    ok: false,
+    response: NextResponse.json({ detail: "Unbekannter API-Pfad." }, { status: 404 }),
+  }
 }
 
 async function readUpstreamBody(req: Request): Promise<BodyInit | undefined> {
@@ -116,7 +174,7 @@ async function readUpstreamBody(req: Request): Promise<BodyInit | undefined> {
 
 export async function handlePdfProxyRequest(
   req: Request,
-  pathSegments: string[] | undefined
+  pathSegments: string[] | undefined,
 ): Promise<Response> {
   const segments = pathSegments ?? []
   const authz = await authorizePdfProxy(req, segments)
@@ -129,7 +187,7 @@ export async function handlePdfProxyRequest(
   const body = await readUpstreamBody(req)
   const init: RequestInit = {
     method: req.method,
-    headers: forwardRequestHeaders(req.headers),
+    headers: forwardRequestHeaders(req.headers, authz.userId),
     body,
   }
   if (body instanceof ReadableStream) {
@@ -143,7 +201,7 @@ export async function handlePdfProxyRequest(
     console.error("[pdf-proxy] upstream fetch failed", error)
     return NextResponse.json(
       { detail: "PDF-Dienst vorübergehend nicht erreichbar." },
-      { status: 502 }
+      { status: 502 },
     )
   }
 

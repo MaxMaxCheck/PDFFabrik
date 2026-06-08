@@ -18,6 +18,7 @@ from routes.compress_pdf import router as compress_pdf_router
 from routes.detect import router as detect_router
 
 from lib.detect import warmup_models
+from lib.internal_middleware import InternalAuthMiddleware
 from lib.job_cleanup import cleanup_old_jobs
 from lib.settings import JOBS_DIR, JOB_CLEANUP_INTERVAL_SEC, cors_allow_origins
 
@@ -64,6 +65,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+app.add_middleware(InternalAuthMiddleware)
 
 api_v1 = APIRouter(prefix="/v1")
 

@@ -3,10 +3,12 @@ import json
 import uuid
 
 import redis
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from rq import Queue
 
+from lib.internal_auth import normalize_owner_id
+from lib.pdf_strip_metadata import MAX_STRIP_BYTES
 from lib.redis_client import get_redis
 from lib.settings import JOBS_DIR, QUEUE_NAME
 
@@ -32,10 +34,17 @@ async def anonymize(
     ocr_used: str = Form("false"),
     output_mode: str = Form("layout"),
     active_categories: str = Form("[]"),
+    x_job_owner_id: str | None = Header(None, alias="X-Job-Owner-Id"),
 ):
     pdf_bytes = await file.read()
     if not pdf_bytes:
         raise HTTPException(400, "Leere Datei.")
+    if len(pdf_bytes) > MAX_STRIP_BYTES:
+        raise HTTPException(413, "PDF ist zu groß.")
+
+    owner_user_id = normalize_owner_id(x_job_owner_id)
+    if not owner_user_id:
+        raise HTTPException(401, "Nicht autorisiert")
 
     try:
         dets: list[dict] = json.loads(detections)
@@ -58,6 +67,7 @@ async def anonymize(
     job_id = str(uuid.uuid4())
     meta = {
         "kind": "anonymize",
+        "owner_user_id": owner_user_id,
         "detections": dets,
         "choices": chcs,
         "active_categories": cats,
@@ -72,6 +82,7 @@ async def anonymize(
         job_id,
         job_id=job_id,
         job_timeout=7200,
+        meta={"owner_user_id": owner_user_id, "job_kind": "anonymize"},
     )
     return JSONResponse(
         content={"job_id": job_id, "job_kind": "anonymize"},

@@ -3,6 +3,7 @@
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
 type UsageReport = {
@@ -15,8 +16,11 @@ type UsageReport = {
   }
   rows: {
     apiKeyId: string
+    userId?: string
+    userName?: string | null
+    userEmail?: string
     name: string | null
-    prefix: string
+    label: string
     callCount: number
     costCents: number
   }[]
@@ -44,9 +48,13 @@ function formatRowCost(cents: number, currency: string): string {
 
 type Props = {
   mode: "account" | "admin"
+  /** Admin: Nutzung nur für einen Nutzer (z. B. Nutzer-Detailseite). */
+  userId?: string
+  /** Admin: Tarif-Sektion ausblenden (wenn eingebettet). */
+  hidePricing?: boolean
 }
 
-export function ApiUsagePanel({ mode }: Props) {
+export function ApiUsagePanel({ mode, userId, hidePricing }: Props) {
   const [from, setFrom] = useState(monthStartIso)
   const [to, setTo] = useState(todayIso)
   const [report, setReport] = useState<UsageReport | null>(null)
@@ -67,6 +75,7 @@ export function ApiUsagePanel({ mode }: Props) {
     setError(null)
     try {
       const q = new URLSearchParams({ from, to })
+      if (mode === "admin" && userId) q.set("userId", userId)
       const res = await fetch(`${usageUrl}?${q}`)
       const j = (await res.json()) as UsageReport & { error?: string }
       if (!res.ok) {
@@ -78,7 +87,7 @@ export function ApiUsagePanel({ mode }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [from, to, usageUrl])
+  }, [from, to, mode, usageUrl, userId])
 
   const loadPricing = useCallback(async () => {
     if (mode !== "admin") return
@@ -122,7 +131,7 @@ export function ApiUsagePanel({ mode }: Props) {
 
   return (
     <div className="space-y-8">
-      {mode === "admin" && (
+      {mode === "admin" && !hidePricing && (
         <section className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
           <h2 className="text-sm font-semibold">Standard-Tarif (API)</h2>
           <p className="text-xs text-muted-foreground">
@@ -196,6 +205,9 @@ export function ApiUsagePanel({ mode }: Props) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-left text-xs text-muted-foreground">
+                      {mode === "admin" && !userId && (
+                        <th className="px-3 py-2">Nutzer</th>
+                      )}
                       <th className="px-3 py-2">Schlüssel</th>
                       <th className="px-3 py-2 text-right">Aufrufe</th>
                       <th className="px-3 py-2 text-right">Kosten</th>
@@ -204,11 +216,29 @@ export function ApiUsagePanel({ mode }: Props) {
                   <tbody>
                     {report.rows.map((r) => (
                       <tr key={r.apiKeyId} className="border-b border-border/60">
+                        {mode === "admin" && !userId && (
+                          <td className="px-3 py-2">
+                            {r.userId ? (
+                              <Link
+                                href={`/dashboard/user/${r.userId}/usage`}
+                                className="text-foreground hover:text-primary hover:underline"
+                              >
+                                <span className="font-medium">
+                                  {r.userName || r.userEmail || "—"}
+                                </span>
+                                {r.userName && r.userEmail && (
+                                  <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
+                                    {r.userEmail}
+                                  </span>
+                                )}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        )}
                         <td className="px-3 py-2">
-                          <code className="text-xs text-muted-foreground">{r.prefix}</code>
-                          {r.name && (
-                            <span className="ml-2 text-foreground">{r.name}</span>
-                          )}
+                          <span className="text-foreground">{r.label}</span>
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.callCount}</td>
                         <td className="px-3 py-2 text-right tabular-nums">
@@ -219,7 +249,12 @@ export function ApiUsagePanel({ mode }: Props) {
                   </tbody>
                   <tfoot>
                     <tr className="bg-muted/20 font-medium">
-                      <td className="px-3 py-2">Gesamt</td>
+                      <td
+                        className="px-3 py-2"
+                        colSpan={mode === "admin" && !userId ? 2 : 1}
+                      >
+                        Gesamt
+                      </td>
                       <td className="px-3 py-2 text-right tabular-nums">{report.totalCalls}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{report.totalFormatted}</td>
                     </tr>

@@ -1,3 +1,4 @@
+import { formatApiKeyLabel } from "@/lib/api-key-display"
 import {
   formatApiKey,
   getApiTokenPepper,
@@ -33,7 +34,7 @@ export async function GET() {
   return NextResponse.json({
     keys: rows.map((r) => ({
       ...r,
-      prefix: `pdffabrik_sk_${r.id}.…`,
+      label: formatApiKeyLabel(r.id, r.name),
     })),
   })
 }

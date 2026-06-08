@@ -1,4 +1,6 @@
-import { pdfToolApiV1Base } from "@/lib/pdf-tool-api-url"
+import { requirePdfApiSession } from "@/lib/authorize-pdf-api"
+import { pdfInternalFetchHeaders } from "@/lib/pdf-internal"
+import { pdfToolApiBase } from "@/lib/pdf-tool-api-url"
 import { NextResponse } from "next/server"
 
 export const maxDuration = 300
@@ -8,6 +10,9 @@ export const maxDuration = 300
  * Next-Origin und 127.0.0.1:3001 und liefert klare 502, wenn die API down ist.
  */
 export async function POST(req: Request) {
+  const auth = await requirePdfApiSession()
+  if (!auth.ok) return auth.response
+
   let form: FormData
   try {
     form = await req.formData()
@@ -20,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ detail: "Keine PDF-Datei." }, { status: 400 })
   }
 
-  const base = pdfToolApiV1Base()
+  const base = `${pdfToolApiBase()}/v1`
   const upstream = new FormData()
   upstream.append("file", file, file.name || "dokument.pdf")
   const quality = form.get("image_quality")
@@ -30,14 +35,13 @@ export async function POST(req: Request) {
   try {
     res = await fetch(`${base}/tools/compress-pdf`, {
       method: "POST",
+      headers: pdfInternalFetchHeaders({ userId: auth.userId }),
       body: upstream,
     })
   } catch (e) {
     console.error("[api/v1/tools/compress-pdf] upstream fetch failed", e)
     return NextResponse.json(
-      {
-        detail: `PDF-API nicht erreichbar (${base}). Läuft der Dienst (Port 3001)?`,
-      },
+      { detail: "PDF-Dienst vorübergehend nicht erreichbar." },
       { status: 502 },
     )
   }
