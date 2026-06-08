@@ -47,10 +47,9 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    # Ein RQ-Prozess pro Container (kein multiprocessing.spawn) — viel stabiler unter Docker
-    # (run_workers.py + WORKER_COUNT=3 lädt SpaCy mehrfach → RAM/OOM, „ewiges“ Polling).
-    # Mehr Durchsatz: docker compose up -d --scale worker=2
-    # $$ damit Compose-Host-Env ($REDIS_URL) nicht substituiert — Variablen gelten im Container
+    # Ein RQ-Prozess pro Container (kein multiprocessing.spawn) — stabiler unter Docker.
+    # Lokal: 1 Instanz. Prod (32 GB): WORKER_REPLICAS=4 in docker-compose-cf.yml.
+    # Mehr Durchsatz lokal: docker compose up -d --scale worker=2
     command:
       [
         "sh",
@@ -62,9 +61,12 @@ services:
       RQ_QUEUE_NAME: pdf_jobs
       JOBS_DIR: /data/jobs
       PYTHONPATH: /app
+      OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
+      TOKENIZERS_PARALLELISM: "false"
+      PII_PRESIDIO_MAX_WORKERS: "${PII_PRESIDIO_MAX_WORKERS:-6}"
     volumes:
       - api-jobs:/data/jobs
-    shm_size: "512mb"
+    shm_size: "1gb"
     depends_on:
       - redis
 
