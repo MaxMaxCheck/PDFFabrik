@@ -1,3 +1,26 @@
+# Coolify injiziert container_name — deploy.replicas funktioniert dort nicht.
+# Stattdessen feste Worker-Services (32 GB / 16 Kerne → 4 parallele PDF-Jobs).
+x-worker: &worker
+  build:
+    context: .
+    dockerfile: apps/api/Dockerfile
+  restart: unless-stopped
+  command:
+    - sh
+    - -c
+    - 'exec rq worker -u "$$REDIS_URL" "$$RQ_QUEUE_NAME"'
+  environment:
+    REDIS_URL: "${REDIS_URL}"
+    RQ_QUEUE_NAME: "${RQ_QUEUE_NAME:-pdf_jobs}"
+    JOBS_DIR: /data/jobs
+    PYTHONPATH: /app
+    OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
+    TOKENIZERS_PARALLELISM: "false"
+    PII_PRESIDIO_MAX_WORKERS: "${PII_PRESIDIO_MAX_WORKERS:-6}"
+  volumes:
+    - api-jobs:/data/jobs
+  shm_size: 1gb
+
 services:
   api:
     container_name: pdffabrik-api
@@ -25,29 +48,13 @@ services:
       start_period: 40s
 
   worker:
-    # Kein container_name — sonst keine Replikas (Coolify/Docker Compose --scale).
-    # 32 GB / 16 Kerne: 4 parallele PDF-Jobs (Analyse + Anonymize, pdf-redact & -json).
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    restart: unless-stopped
-    deploy:
-      replicas: ${WORKER_REPLICAS:-4}
-    command:
-      - sh
-      - -c
-      - 'exec rq worker -u "$$REDIS_URL" "$$RQ_QUEUE_NAME"'
-    environment:
-      REDIS_URL: "${REDIS_URL}"
-      RQ_QUEUE_NAME: "${RQ_QUEUE_NAME:-pdf_jobs}"
-      JOBS_DIR: /data/jobs
-      PYTHONPATH: /app
-      OMP_NUM_THREADS: "${OMP_NUM_THREADS:-4}"
-      TOKENIZERS_PARALLELISM: "false"
-      PII_PRESIDIO_MAX_WORKERS: "${PII_PRESIDIO_MAX_WORKERS:-6}"
-    volumes:
-      - api-jobs:/data/jobs
-    shm_size: 1gb
+    <<: *worker
+  worker2:
+    <<: *worker
+  worker3:
+    <<: *worker
+  worker4:
+    <<: *worker
 
 volumes:
   api-jobs: null
