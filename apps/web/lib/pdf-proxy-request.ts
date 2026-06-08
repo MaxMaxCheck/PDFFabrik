@@ -48,11 +48,18 @@ function copyProxyResponseHeaders(source: Headers): Headers {
   return target
 }
 
-function forwardRequestHeaders(source: Headers, userId?: string): Headers {
+function forwardRequestHeaders(
+  source: Headers,
+  userId?: string,
+  options?: { includeContentType?: boolean },
+): Headers {
   const contentType = source.get("content-type")
   return pdfInternalFetchHeaders({
     userId,
-    extra: contentType ? { "content-type": contentType } : undefined,
+    extra:
+      options?.includeContentType !== false && contentType
+        ? { "content-type": contentType }
+        : undefined,
   })
 }
 
@@ -155,21 +162,38 @@ async function authorizePdfProxy(
   }
 }
 
-async function readUpstreamBody(req: Request): Promise<BodyInit | undefined> {
-  if (req.method === "GET" || req.method === "HEAD") return undefined
+type UpstreamBody = {
+  body?: BodyInit
+  /** false when FormData was rebuilt — fetch must set a fresh multipart boundary */
+  includeContentType: boolean
+}
+
+async function readUpstreamBody(req: Request): Promise<UpstreamBody> {
+  if (req.method === "GET" || req.method === "HEAD") {
+    return { includeContentType: true }
+  }
 
   const contentType = req.headers.get("content-type") ?? ""
   if (contentType.includes("multipart/form-data")) {
-    const incoming = await req.formData()
-    const upstreamBody = new FormData()
-    for (const [key, value] of incoming.entries()) {
-      upstreamBody.append(key, value)
+    // Stream through unchanged so the original boundary stays valid upstream.
+    if (req.body) {
+      return { body: req.body, includeContentType: true }
     }
-    return upstreamBody
+
+    try {
+      const incoming = await req.formData()
+      const upstreamBody = new FormData()
+      for (const [key, value] of incoming.entries()) {
+        upstreamBody.append(key, value)
+      }
+      return { body: upstreamBody, includeContentType: false }
+    } catch (error) {
+      console.error("[pdf-proxy] multipart parse failed", error)
+      throw new Error("MULTIPART_PARSE_FAILED")
+    }
   }
 
-  if (req.body) return req.body
-  return undefined
+  return { body: req.body ?? undefined, includeContentType: true }
 }
 
 export async function handlePdfProxyRequest(
@@ -184,10 +208,20 @@ export async function handlePdfProxyRequest(
   const upstreamUrl = new URL(`${pdfToolApiBase()}/v1/${upstreamPath}`)
   upstreamUrl.search = new URL(req.url).search
 
-  const body = await readUpstreamBody(req)
+  let upstreamBody: UpstreamBody
+  try {
+    upstreamBody = await readUpstreamBody(req)
+  } catch (error) {
+    if (error instanceof Error && error.message === "MULTIPART_PARSE_FAILED") {
+      return NextResponse.json({ detail: "Ungültige Formulardaten." }, { status: 400 })
+    }
+    throw error
+  }
+
+  const { body, includeContentType } = upstreamBody
   const init: RequestInit = {
     method: req.method,
-    headers: forwardRequestHeaders(req.headers, authz.userId),
+    headers: forwardRequestHeaders(req.headers, authz.userId, { includeContentType }),
     body,
   }
   if (body instanceof ReadableStream) {
